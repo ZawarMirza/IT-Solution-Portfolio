@@ -92,9 +92,13 @@ const LoginPage = () => {
 
                     <div className="flex items-center justify-between">
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                            <button 
+                                type="button" 
+                                onClick={() => {/* TODO: Implement forgot password functionality */}}
+                                className="font-medium text-blue-600 hover:text-blue-500 focus:outline-none"
+                            >
                                 Forgot your password?
-                            </a>
+                            </button>
                         </div>
                     </div>
 

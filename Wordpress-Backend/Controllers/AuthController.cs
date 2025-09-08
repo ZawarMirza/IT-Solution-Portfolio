@@ -12,7 +12,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using ProductAPI.Data; // Added missing using directive for ProductDbContext
+using ProductAPI.Data;
+using System.Linq;
 
 namespace Wordpress_Backend.Controllers
 {
@@ -21,6 +22,7 @@ namespace Wordpress_Backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly SignInManager<User> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthController> _logger;
@@ -28,12 +30,14 @@ namespace Wordpress_Backend.Controllers
 
         public AuthController(
             UserManager<User> userManager,
+            RoleManager<IdentityRole> roleManager,
             SignInManager<User> signInManager,
             IConfiguration configuration,
             ILogger<AuthController> logger,
             ProductDbContext context)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _logger = logger;
@@ -51,13 +55,19 @@ namespace Wordpress_Backend.Controllers
             {
                 UserName = model.Email,
                 Email = model.Email,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                FirstName = model.FirstName,
+                LastName = model.LastName
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
+            {
+                // Assign default role to new users
+                await _userManager.AddToRoleAsync(user, "User");
                 return Ok(new { message = "User created successfully." });
+            }
 
             foreach (var error in result.Errors)
                 ModelState.AddModelError(string.Empty, error.Description);
@@ -160,22 +170,86 @@ namespace Wordpress_Backend.Controllers
 
         // GET: api/auth/users
         [HttpGet("users")]
-        // Removed [Authorize] completely to allow access without authentication for debugging
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<object>>> GetAllUsers()
         {
             var users = await _userManager.Users.Select(u => new
             {
-                Id = u.Id,
-                UserName = u.UserName,
-                Email = u.Email,
-                CreatedAt = u.CreatedAt // If this field doesn't exist in DB, it will be default DateTime
+                u.Id,
+                u.UserName,
+                u.Email,
+                u.FirstName,
+                u.LastName,
+                u.CreatedAt,
+                Roles = _userManager.GetRolesAsync(u).Result
             }).ToListAsync();
             return Ok(users);
         }
 
+        // GET: api/auth/me
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = await _userManager.FindByIdAsync(userId);
+            
+            if (user == null)
+                return NotFound("User not found");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            
+            return Ok(new 
+            {
+                user.Id,
+                user.UserName,
+                user.Email,
+                user.FirstName,
+                user.LastName,
+                user.CreatedAt,
+                Roles = roles
+            });
+        }
+
+        // POST: api/auth/roles
+        [HttpPost("roles")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateRole([FromBody] string roleName)
+        {
+            var roleExists = await _roleManager.RoleExistsAsync(roleName);
+            if (roleExists)
+                return BadRequest("Role already exists");
+
+            var result = await _roleManager.CreateAsync(new IdentityRole(roleName));
+            if (result.Succeeded)
+                return Ok(new { message = $"Role {roleName} created successfully" });
+
+            return BadRequest(result.Errors);
+        }
+
+        // POST: api/auth/users/{userId}/roles
+        [HttpPost("users/{userId}/roles")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddUserToRole(string userId, [FromBody] string roleName)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound("User not found");
+
+            var roleExists = await _roleManager.RoleExistsAsync(roleName);
+            if (!roleExists)
+                return NotFound("Role not found");
+
+            var result = await _userManager.AddToRoleAsync(user, roleName);
+            if (result.Succeeded)
+                return Ok(new { message = $"User added to role {roleName} successfully" });
+
+            return BadRequest(result.Errors);
+        }
+
         // DELETE: api/auth/users/{id}
         [HttpDelete("users/{id}")]
-        // Removed [Authorize] completely to allow deletion without authentication for debugging
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteUser(string id)
         {
             var user = await _userManager.FindByIdAsync(id);

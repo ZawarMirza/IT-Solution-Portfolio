@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProductAPI.Models
 {
@@ -7,20 +8,21 @@ namespace ProductAPI.Models
         public int Id { get; set; }
 
         [Required]
-        public string Domain { get; set; } = "";
+        [MaxLength(255)]
+        public string Title { get; set; } = string.Empty;
 
-        public int DomainId { get; set; }
+        public string? Caption { get; set; }
 
-        [Required]
-        public string Title { get; set; } = "";
-
-        public string Caption { get; set; } = "";
-
-        public string Image { get; set; } = "";
+        public string? Image { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public string? CreatedById { get; set; }
-        public User? CreatedBy { get; set; }
+        // Foreign key for Domain
+        public int DomainId { get; set; }
+        public virtual Domain Domain { get; set; } = null!;
+
+        // Foreign key for ApplicationUser
+        public string CreatedById { get; set; } = string.Empty;
+        public virtual ApplicationUser CreatedBy { get; set; } = null!;
     }
 }

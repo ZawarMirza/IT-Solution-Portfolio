@@ -1,19 +1,25 @@
 using ProductAPI.Models;
+using System.Globalization;
 
 namespace ProductAPI.Services
 {
     public class ProductService
     {
-        private List<Product> _products = new()
+        private readonly List<Product> _products = new()
         {
-            new Product { Id = 1, Domain = "Automation", Title = "WorkFlow Automator", Caption = "...", Image = "..." },
+            new Product { Id = 1, Domain = new Domain { Name = "Automation" }, Title = "WorkFlow Automator", Caption = "...", Image = "..." },
             // Add more initial products if needed
         };
 
         public List<Product> GetAll() => _products;
+        
         public List<Product> GetByDomain(string domain) =>
-            _products.Where(p => p.Domain.ToLower() == domain.ToLower()).ToList();
+            _products.Where(p => 
+                string.Equals(p.Domain?.Name, domain, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+                
         public Product? GetById(int id) => _products.FirstOrDefault(p => p.Id == id);
+        
         public void Add(Product product)
         {
             product.Id = _products.Any() ? _products.Max(p => p.Id) + 1 : 1;

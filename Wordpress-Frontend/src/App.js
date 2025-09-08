@@ -1,49 +1,76 @@
+// src/App.js
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-// CSS moved to inline styles in index.html
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import ProductsPage from './pages/ProductsPage';
-import AdminLoginPage from './pages/admin/AdminLoginPage';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import UserDashboardPage from './pages/UserDashboardPage';
-import MainLayout from './components/MainLayout';
-import DashboardLayout from './components/DashboardLayout';
-import AdminLayout from './components/AdminLayout';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminPostsPage from './pages/admin/AdminProductsPage'; // Renamed to AdminProductsPage
-import AdminDomainsPage from './pages/admin/AdminDomainsPage'; // Added for domain management
+import AdminProductsPage from './pages/admin/AdminProductsPage';
+import NotFoundPage from './pages/NotFoundPage';
+import UnauthorizedPage from './pages/UnauthorizedPage';
+
+// Import Tailwind's base styles
+import './index.css';
+
 function App() {
   return (
     <Router>
-      <Routes>
-        {/* Public routes with Header and Footer */}
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/products" element={<ProductsPage />} />
-        </Route>
+      <AuthProvider>
+        <Navbar />
+        <main className="min-h-screen bg-gray-50">
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-        {/* User Dashboard routes */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<UserDashboardPage />} />
-        </Route>
+            {/* Protected User Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <UserDashboardPage />
+                </ProtectedRoute>
+              }
+            />
 
-        {/* Admin Dashboard routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="all-products" element={<AdminPostsPage />} />
-          <Route path="domains" element={<AdminDomainsPage />} />
-        </Route>
+            {/* Protected Admin Routes */}
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute requiredRoles={['Admin']}>
+                  <AdminRoutes />
+                </ProtectedRoute>
+              }
+            />
 
-        {/* Standalone auth routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-      </Routes>
+            {/* 404 Page */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </main>
+      </AuthProvider>
     </Router>
+  );
+}
+
+// Nested routes for admin section
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route index element={<AdminDashboardPage />} />
+      <Route path="dashboard" element={<AdminDashboardPage />} />
+      <Route path="users" element={<AdminUsersPage />} />
+      <Route path="products" element={<AdminProductsPage />} />
+    </Routes>
   );
 }
 

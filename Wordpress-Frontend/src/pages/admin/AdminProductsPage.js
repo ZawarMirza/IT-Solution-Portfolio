@@ -50,7 +50,7 @@ const AdminProductsPage = () => {
         setError(null);
         try {
             // Prepare product data with Domain name lookup
-            const selectedDomain = domains.find(d => d.id == newProduct.domainId); // Using loose equality to handle string/number comparison
+            const selectedDomain = domains.find(d => Number(d.id) === Number(newProduct.domainId)); // Convert to numbers for comparison
             if (!selectedDomain) {
                 setError('Invalid domain selected');
                 setLoading(false);

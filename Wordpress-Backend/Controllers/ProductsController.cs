@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductAPI.Data;
 using ProductAPI.Models;
+using System.Globalization;
 
 namespace ProductAPI.Controllers
 {
@@ -21,10 +22,11 @@ namespace ProductAPI.Controllers
         {
             var products = await _context.Products
                 .Include(p => p.CreatedBy)
+                .Include(p => p.Domain)
                 .Select(p => new
                 {
                     p.Id,
-                    p.Domain,
+                    Domain = p.Domain.Name,
                     p.DomainId,
                     p.Title,
                     p.Caption,
@@ -41,11 +43,13 @@ namespace ProductAPI.Controllers
         {
             var products = await _context.Products
                 .Include(p => p.CreatedBy)
-                .Where(p => p.Domain.ToLower() == domain.ToLower())
+                .Include(p => p.Domain)
+                .Where(p => p.Domain != null && 
+                    string.Equals(p.Domain.Name, domain, StringComparison.OrdinalIgnoreCase))
                 .Select(p => new
                 {
                     p.Id,
-                    p.Domain,
+                    Domain = p.Domain.Name,
                     p.DomainId,
                     p.Title,
                     p.Caption,
@@ -63,11 +67,12 @@ namespace ProductAPI.Controllers
         {
             var product = await _context.Products
                 .Include(p => p.CreatedBy)
+                .Include(p => p.Domain)
                 .Where(p => p.Id == id)
                 .Select(p => new
                 {
                     p.Id,
-                    p.Domain,
+                    Domain = p.Domain != null ? p.Domain.Name : "N/A",
                     p.DomainId,
                     p.Title,
                     p.Caption,
@@ -78,9 +83,11 @@ namespace ProductAPI.Controllers
                 .FirstOrDefaultAsync();
 
             if (product == null)
+            {
                 return NotFound();
+            }
 
-            return Ok(product);
+            return product;
         }
 
         [HttpPost]
@@ -137,12 +144,13 @@ namespace ProductAPI.Controllers
         {
             var recentProducts = await _context.Products
                 .Include(p => p.CreatedBy)
+                .Include(p => p.Domain)
                 .OrderByDescending(p => p.Id)
                 .Take(limit)
                 .Select(p => new
                 {
                     p.Id,
-                    p.Domain,
+                    Domain = p.Domain != null ? p.Domain.Name : "N/A",
                     p.DomainId,
                     p.Title,
                     p.Caption,
