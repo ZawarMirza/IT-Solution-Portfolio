@@ -8,11 +8,11 @@ using ProductAPI.Data;
 
 #nullable disable
 
-namespace Wordpress_Backend.Data.Migrations
+namespace Wordpress_Backend.Migrations
 {
     [DbContext(typeof(ProductDbContext))]
-    [Migration("20250908175219_InitSchema")]
-    partial class InitSchema
+    [Migration("20250908195407_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -151,7 +151,6 @@ namespace Wordpress_Backend.Data.Migrations
             modelBuilder.Entity("ProductAPI.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("AccessFailedCount")

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace ProductAPI.Data
 {
-    public class ProductDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
+    public class ProductDbContext : IdentityDbContext<ApplicationUser>
     {
         public ProductDbContext(DbContextOptions<ProductDbContext> options)
             : base(options)
@@ -19,67 +19,7 @@ namespace ProductAPI.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<ApplicationUser>(entity =>
-            {
-                entity.ToTable("AspNetUsers");
-                entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            });
-
-            modelBuilder.Entity<IdentityRole>(entity =>
-            {
-                entity.ToTable("AspNetRoles");
-            });
-
-            modelBuilder.Entity<IdentityUserRole<string>>(entity =>
-            {
-                entity.ToTable("AspNetUserRoles");
-            });
-
-            modelBuilder.Entity<IdentityUserClaim<string>>(entity =>
-            {
-                entity.ToTable("AspNetUserClaims");
-            });
-
-            modelBuilder.Entity<IdentityUserLogin<string>>(entity =>
-            {
-                entity.ToTable("AspNetUserLogins");
-            });
-
-            modelBuilder.Entity<IdentityRoleClaim<string>>(entity =>
-            {
-                entity.ToTable("AspNetRoleClaims");
-            });
-
-            modelBuilder.Entity<IdentityUserToken<string>>(entity =>
-            {
-                entity.ToTable("AspNetUserTokens");
-            });
-
-            modelBuilder.Entity<Product>(entity =>
-            {
-                entity.HasKey(p => p.Id);
-                entity.Property(p => p.Title).IsRequired();
-                entity.Property(p => p.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                
-                // Relationships
-                entity.HasOne(p => p.CreatedBy)
-                    .WithMany(u => u.Products)
-                    .HasForeignKey(p => p.CreatedById)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(p => p.Domain)
-                    .WithMany(d => d.Products)
-                    .HasForeignKey(p => p.DomainId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<Domain>(entity =>
-            {
-                entity.HasKey(d => d.Id);
-                entity.Property(d => d.Name).IsRequired().HasMaxLength(100);
-                entity.HasIndex(d => d.Name).IsUnique();
-            });
-
+            // Configure ApplicationUser properties
             modelBuilder.Entity<ApplicationUser>(entity =>
             {
                 entity.Property(u => u.FirstName).HasMaxLength(100);
@@ -87,9 +27,40 @@ namespace ProductAPI.Data
                 entity.Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
-            modelBuilder.Entity<IdentityUserLogin<string>>().HasKey(l => new { l.LoginProvider, l.ProviderKey });
-            modelBuilder.Entity<IdentityUserRole<string>>().HasKey(r => new { r.UserId, r.RoleId });
-            modelBuilder.Entity<IdentityUserToken<string>>().HasKey(t => new { t.UserId, t.LoginProvider, t.Name });
+            // Configure Product
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+                entity.Property(p => p.Title).IsRequired().HasMaxLength(255);
+                entity.Property(p => p.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                // Relationships
+                entity.HasOne(p => p.Domain)
+                    .WithMany(d => d.Products)
+                    .HasForeignKey(p => p.DomainId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.CreatedBy)
+                    .WithMany(u => u.Products)
+                    .HasForeignKey(p => p.CreatedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure Domain
+            modelBuilder.Entity<Domain>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+                entity.Property(d => d.Name).IsRequired().HasMaxLength(100);
+                entity.HasIndex(d => d.Name).IsUnique();
+            });
+
+            // Configure Identity table names
+            modelBuilder.Entity<IdentityRole>().ToTable("AspNetRoles");
+            modelBuilder.Entity<IdentityUserRole<string>>().ToTable("AspNetUserRoles");
+            modelBuilder.Entity<IdentityUserClaim<string>>().ToTable("AspNetUserClaims");
+            modelBuilder.Entity<IdentityUserLogin<string>>().ToTable("AspNetUserLogins");
+            modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("AspNetRoleClaims");
+            modelBuilder.Entity<IdentityUserToken<string>>().ToTable("AspNetUserTokens");
         }
     }
 }

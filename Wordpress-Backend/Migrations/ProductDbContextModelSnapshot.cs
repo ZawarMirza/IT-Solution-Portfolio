@@ -2,20 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProductAPI.Data;
 
 #nullable disable
 
-namespace Wordpress_Backend.Data.Migrations
+namespace Wordpress_Backend.Migrations
 {
     [DbContext(typeof(ProductDbContext))]
-    [Migration("20250908173817_InitialCreate")]
-    partial class InitialCreate
+    partial class ProductDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.7");
@@ -151,7 +148,6 @@ namespace Wordpress_Backend.Data.Migrations
             modelBuilder.Entity("ProductAPI.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("AccessFailedCount")

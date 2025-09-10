@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using Wordpress_Backend.Models;
 using ProductAPI.Models;
 using System;
 using System.Collections.Generic;
@@ -19,19 +18,20 @@ namespace Wordpress_Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [ApiExplorerSettings(GroupName = "v1")]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<User> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly SignInManager<User> _signInManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthController> _logger;
         private readonly ProductDbContext _context;
 
         public AuthController(
-            UserManager<User> userManager,
+            UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
-            SignInManager<User> signInManager,
+            SignInManager<ApplicationUser> signInManager,
             IConfiguration configuration,
             ILogger<AuthController> logger,
             ProductDbContext context)
@@ -44,20 +44,104 @@ namespace Wordpress_Backend.Controllers
             _context = context;
         }
 
-        // POST: api/auth/signup
+        // POST: api/auth/register
+        [HttpPost("register")]
+        [Route("register")] // Explicit route
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = new ApplicationUser
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            var result = await _userManager.CreateAsync(user, model.Password);
+
+            if (result.Succeeded)
+            {
+                // Assign default role to new users
+                await _userManager.AddToRoleAsync(user, "User");
+                
+                // Auto-login after registration to match frontend expectations
+                var roles = await _userManager.GetRolesAsync(user);
+                var userClaims = await _userManager.GetClaimsAsync(user);
+                
+                var roleClaims = new List<Claim>();
+                foreach (var role in roles)
+                {
+                    roleClaims.Add(new Claim(ClaimTypes.Role, role));
+                }
+
+                var claims = new[]
+                {
+                    new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+                    new Claim(JwtRegisteredClaimNames.Name, user.UserName ?? string.Empty),
+                    new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                }
+                .Union(userClaims)
+                .Union(roleClaims);
+
+                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "ThisIsASecretKeyForJwtTokenGeneration1234567890"));
+
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["Jwt:ValidIssuer"],
+                    audience: _configuration["Jwt:ValidAudience"],
+                    expires: DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpireInMinutes", 60)),
+                    claims: claims,
+                    signingCredentials: new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256)
+                );
+
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+                
+                return Ok(new 
+                { 
+                    token = tokenString,
+                    refreshToken = tokenString, // For now, using same token as refresh token
+                    user = new 
+                    {
+                        id = user.Id,
+                        email = user.Email,
+                        firstName = user.FirstName,
+                        lastName = user.LastName,
+                        role = roles.FirstOrDefault() ?? "User"
+                    },
+                    message = "User registered successfully."
+                });
+            }
+
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
+
+            return BadRequest(ModelState);
+        }
+
+        // POST: api/auth/signup (keeping for backward compatibility)
         [HttpPost("signup")]
+        [Route("signup")] // Explicit route
+        [ApiExplorerSettings(IgnoreApi = true)] // Hide from Swagger
         public async Task<IActionResult> Signup([FromBody] RegisterModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = new User
+            var user = new ApplicationUser
             {
                 UserName = model.Email,
                 Email = model.Email,
-                CreatedAt = DateTime.UtcNow,
                 FirstName = model.FirstName,
-                LastName = model.LastName
+                LastName = model.LastName,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -114,15 +198,26 @@ namespace Wordpress_Backend.Controllers
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:ValidIssuer"],
                 audience: _configuration["Jwt:ValidAudience"],
-                expires: DateTime.UtcNow.AddMinutes(60),
+                expires: DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpireInMinutes", 60)),
                 claims: claims,
                 signingCredentials: new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256)
             );
 
-            return Ok(new
-            {
-                token = new JwtSecurityTokenHandler().WriteToken(token),
-                expiration = token.ValidTo
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            _logger.LogInformation("JWT Token generated for user {UserId}", user.Id);
+            _logger.LogDebug("JWT Token: {Token}", tokenString);
+
+            // Set the token in the response headers
+            Response.Headers.Add("Authorization", $"Bearer {tokenString}");
+
+            return Ok(new 
+            { 
+                token = tokenString,
+                expiration = token.ValidTo,
+                email = user.Email,
+                username = user.UserName,
+                roles = roles
             });
         }
 

@@ -1,4 +1,4 @@
-namespace Wordpress_Backend.Models
+namespace ProductAPI.Models
 {
     public class LoginModel
     {

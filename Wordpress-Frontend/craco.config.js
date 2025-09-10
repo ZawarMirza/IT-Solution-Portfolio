@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   style: {
     postcss: {
@@ -7,4 +9,9 @@ module.exports = {
       ],
     },
   },
-}
+  webpack: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
+};

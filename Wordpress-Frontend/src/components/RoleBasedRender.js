@@ -1,5 +1,5 @@
 // src/components/RoleBasedRender.js
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from "../context";
 
 const RoleBasedRender = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();

@@ -1,5 +1,5 @@
 // src/pages/UserDashboardPage.js
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from "../context";
 import RoleBasedRender from '../components/RoleBasedRender';
 
 function UserDashboardPage() {

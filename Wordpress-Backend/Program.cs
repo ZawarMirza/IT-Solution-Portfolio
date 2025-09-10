@@ -17,9 +17,13 @@ builder.Services.AddDbContext<ProductDbContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
+    {
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials()
+              .WithExposedHeaders("X-Pagination");
+    });
 });
 
 builder.Services.AddControllers();
@@ -59,8 +63,9 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = true,
         ValidateAudience = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured"),
-        ValidAudience = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured"),
+        ValidateLifetime = true,
+        ValidIssuer = builder.Configuration["Jwt:ValidIssuer"] ?? throw new InvalidOperationException("JWT ValidIssuer is not configured"),
+        ValidAudience = builder.Configuration["Jwt:ValidAudience"] ?? throw new InvalidOperationException("JWT ValidAudience is not configured"),
         ClockSkew = TimeSpan.Zero
     };
 });
@@ -114,6 +119,7 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while initializing the database.");
+        // Don't throw the exception to prevent server crash
     }
 }
 
