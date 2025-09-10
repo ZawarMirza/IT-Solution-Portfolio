@@ -214,10 +214,16 @@ namespace Wordpress_Backend.Controllers
             return Ok(new 
             { 
                 token = tokenString,
-                expiration = token.ValidTo,
-                email = user.Email,
-                username = user.UserName,
-                roles = roles
+                refreshToken = tokenString, // For now, using same token as refresh token
+                user = new 
+                {
+                    id = user.Id,
+                    email = user.Email,
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    role = roles.FirstOrDefault() ?? "User"
+                },
+                expiration = token.ValidTo
             });
         }
 
