@@ -6,7 +6,7 @@ import AdminNavigation from './navigation/AdminNavigation';
 import UserNavigation from './navigation/UserNavigation';
 
 const Navigation = () => {
-  const { user, isAdmin, isUser, logout } = useAuth();
+  const { user, isAdmin, isUser, isGuest, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -25,10 +25,9 @@ const Navigation = () => {
               </Link>
             </div>
             
-            {/* Role-based Navigation */}
-            {!user && <GuestNavigation />}
-            {user && isAdmin() && <AdminNavigation />}
-            {user && isUser() && <UserNavigation />}
+            {/* Role-based Navigation - Only show for non-admin users */}
+            {isGuest() && <GuestNavigation />}
+            {user && isUser() && !isAdmin() && <UserNavigation />}
           </div>
           
           <div className="flex items-center">

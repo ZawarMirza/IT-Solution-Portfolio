@@ -24,5 +24,7 @@ namespace ProductAPI.Models
         [DataType(DataType.Password)]
         [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
         public string? ConfirmPassword { get; set; } = string.Empty;
+
+        public string? Role { get; set; } = "User";
     }
 }

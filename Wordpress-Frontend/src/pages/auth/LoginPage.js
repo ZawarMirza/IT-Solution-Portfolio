@@ -102,6 +102,39 @@ const LoginPage = () => {
             </div>
           )}
           
+          {/* Quick Login Options */}
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Login Options:</h3>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@example.com');
+                  setPassword('Admin@123');
+                }}
+                className="w-full text-left px-3 py-2 text-sm bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+              >
+                <span className="font-medium text-blue-800">Admin Login</span>
+                <span className="text-blue-600 block text-xs">Full access to manage all content</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('user@example.com');
+                  setPassword('User@123');
+                }}
+                className="w-full text-left px-3 py-2 text-sm bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition-colors"
+              >
+                <span className="font-medium text-green-800">User Login</span>
+                <span className="text-green-600 block text-xs">Download publications, rate/comment, view repositories</span>
+              </button>
+              <div className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md">
+                <span className="font-medium text-gray-700">Guest Access</span>
+                <span className="text-gray-600 block text-xs">View-only access to non-premium content (no login required)</span>
+              </div>
+            </div>
+          </div>
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">

@@ -26,16 +26,27 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminContentPage from './pages/admin/AdminContentPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminProductsPage from './pages/admin/AdminProductsPage';
+import AdminDomainsPage from './pages/admin/AdminDomainsPage';
+import AdminPublicationsPage from './pages/admin/AdminPublicationsPage';
+import AdminRepositoriesPage from './pages/admin/AdminRepositoriesPage';
 
 // Dashboard Components
 import AdminDashboard from './pages/dashboard/AdminDashboard';
 import UserDashboard from './pages/dashboard/UserDashboard';
+
+// Role-based redirect component
+import RoleBasedRedirect from './components/RoleBasedRedirect';
 
 // User Pages
 import UserProfilePage from './pages/user/UserProfilePage';
 import UserPublicationsPage from './pages/user/UserPublicationsPage';
 import UserRepositoriesPage from './pages/user/UserRepositoriesPage';
 import UserSettingsPage from './pages/user/UserSettingsPage';
+
+// Layout Components
+import AdminLayoutComponent from './components/AdminLayout';
+import UserLayout from './components/UserLayout';
 
 // Session Timeout
 import SessionTimeoutModal from './components/SessionTimeoutModal';
@@ -62,13 +73,11 @@ const AuthLayout = ({ children }) => (
 
 const AdminLayout = () => (
   <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
-    <MainLayout>
-      <Outlet />
-    </MainLayout>
+    <AdminLayoutComponent />
   </ProtectedRoute>
 );
 
-const UserLayout = () => (
+const UserDashboardLayout = () => (
   <ProtectedRoute requiredRoles={[ROLES.USER, ROLES.ADMIN]}>
     <MainLayout>
       <Outlet />
@@ -107,24 +116,32 @@ function App() {
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           </Route>
 
-          {/* Dashboard - Accessible to all authenticated users */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <MainLayout><DashboardPage /></MainLayout>
-            </ProtectedRoute>
-          } />
+          {/* Dashboard - Redirect based on role */}
+          <Route path="/dashboard" element={<RoleBasedRedirect />} />
 
-          {/* Admin routes */}
-          <Route path="/admin" element={<AdminLayout />}>
+          {/* Admin routes - Protected by Admin role */}
+          <Route path="/admin" element={
+            <ProtectedRoute requiredRoles={['Admin']}>
+              <AdminLayoutComponent />
+            </ProtectedRoute>
+          }>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="users" element={<AdminUsersPage />} />
+            <Route path="products" element={<AdminProductsPage />} />
+            <Route path="domains" element={<AdminDomainsPage />} />
+            <Route path="publications" element={<AdminPublicationsPage />} />
+            <Route path="repositories" element={<AdminRepositoriesPage />} />
             <Route path="content" element={<AdminContentPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
           </Route>
 
-          {/* User routes */}
-          <Route path="/user" element={<UserLayout />}>
+          {/* User routes - Protected by User role */}
+          <Route path="/user" element={
+            <ProtectedRoute requiredRoles={['User', 'Admin']}>
+              <UserLayout />
+            </ProtectedRoute>
+          }>
             <Route index element={<Navigate to="profile" replace />} />
             <Route path="profile" element={<UserProfilePage />} />
             <Route path="publications" element={<UserPublicationsPage />} />

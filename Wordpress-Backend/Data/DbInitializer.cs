@@ -24,7 +24,7 @@ namespace ProductAPI.Data
                 await context.Database.EnsureCreatedAsync();
 
                 // Create default roles if they don't exist
-                string[] roles = { "Admin", "User" };
+                string[] roles = { "Admin", "User", "Guest" };
 
                 foreach (var role in roles)
                 {
@@ -62,6 +62,37 @@ namespace ProductAPI.Data
                         // Log the errors if user creation fails
                         var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                         throw new Exception($"Failed to create admin user: {errors}");
+                    }
+                }
+
+                // Create default regular user if it doesn't exist
+                string userEmail = "user@example.com";
+                string userPassword = "User@123";
+
+                var regularUser = await userManager.FindByEmailAsync(userEmail);
+                if (regularUser == null)
+                {
+                    regularUser = new ApplicationUser
+                    {
+                        UserName = userEmail,
+                        Email = userEmail,
+                        FirstName = "Regular",
+                        LastName = "User",
+                        EmailConfirmed = true,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    var result = await userManager.CreateAsync(regularUser, userPassword);
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(regularUser, "User");
+                    }
+                    else
+                    {
+                        // Log the errors if user creation fails
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        throw new Exception($"Failed to create regular user: {errors}");
                     }
                 }
             }

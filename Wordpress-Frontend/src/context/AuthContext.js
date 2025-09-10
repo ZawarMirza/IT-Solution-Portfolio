@@ -163,7 +163,9 @@ export const AuthProvider = ({ children }) => {
       return response.data;
     } catch (error) {
       console.error('Registration error:', error);
-      setError(error.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      setError(error.response?.data?.message || error.response?.data || 'Registration failed. Please try again.');
       throw error;
     }
   }, [navigate, location.state]);
@@ -182,8 +184,8 @@ export const AuthProvider = ({ children }) => {
     // Clear axios headers
     delete axios.defaults.headers.common['Authorization'];
     
-    // Redirect to login
-    navigate('/login');
+    // Redirect to main website
+    navigate('/');
   }, [navigate]);
 
   // Check if user has any of the required roles
@@ -210,6 +212,11 @@ export const AuthProvider = ({ children }) => {
     return hasRole([ROLES.USER, ROLES.ADMIN]);
   }, [hasRole]);
 
+  // Check if user is guest (not authenticated)
+  const isGuest = useCallback(() => {
+    return !user || !token;
+  }, [user, token]);
+
   const value = {
     user,
     token,
@@ -223,6 +230,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     isAdmin,
     isUser,
+    isGuest,
     refreshAuthToken,
     setError
   };

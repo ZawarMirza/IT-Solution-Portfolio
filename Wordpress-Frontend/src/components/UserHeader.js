@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context';
 
-const AdminHeader = () => {
+const UserHeader = () => {
   const { user } = useAuth();
 
   return (
@@ -9,10 +9,10 @@ const AdminHeader = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Admin Dashboard
+            User Dashboard
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Manage users, products, domains, and system settings
+            Manage your publications, repositories, and profile
           </p>
         </div>
         <div className="flex items-center space-x-4">
@@ -24,9 +24,9 @@ const AdminHeader = () => {
               {user?.email}
             </p>
           </div>
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
             <span className="text-white font-medium text-sm">
-              {user?.firstName?.charAt(0) || 'A'}
+              {user?.firstName?.charAt(0) || 'U'}
             </span>
           </div>
         </div>
@@ -35,4 +35,4 @@ const AdminHeader = () => {
   );
 };
 
-export default AdminHeader;
+export default UserHeader;

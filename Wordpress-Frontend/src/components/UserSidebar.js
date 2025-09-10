@@ -2,49 +2,29 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context';
 
-function AdminSidebar() {
+function UserSidebar() {
   const location = useLocation();
   const { logout, user } = useAuth();
   
   const menuItems = [
     {
-      name: 'Dashboard',
-      path: '/admin/dashboard',
-      icon: '📊'
-    },
-    {
-      name: 'Users',
-      path: '/admin/users',
-      icon: '👥'
-    },
-    {
-      name: 'Products',
-      path: '/admin/products',
-      icon: '📦'
-    },
-    {
-      name: 'Domains',
-      path: '/admin/domains',
-      icon: '🏷️'
+      name: 'Profile',
+      path: '/user/profile',
+      icon: '👤'
     },
     {
       name: 'Publications',
-      path: '/admin/publications',
+      path: '/user/publications',
       icon: '📚'
     },
     {
       name: 'Repositories',
-      path: '/admin/repositories',
+      path: '/user/repositories',
       icon: '📁'
     },
     {
-      name: 'Content',
-      path: '/admin/content',
-      icon: '📝'
-    },
-    {
       name: 'Settings',
-      path: '/admin/settings',
+      path: '/user/settings',
       icon: '⚙️'
     }
   ];
@@ -53,8 +33,8 @@ function AdminSidebar() {
     <div className="h-full bg-gray-800 text-white flex flex-col">
       {/* Logo/Brand */}
       <div className="p-4 border-b border-gray-700">
-        <h2 className="text-xl font-bold text-white">Admin Panel</h2>
-        <p className="text-sm text-gray-300">Welcome, {user?.firstName || 'Admin'}</p>
+        <h2 className="text-xl font-bold text-white">User Dashboard</h2>
+        <p className="text-sm text-gray-300">Welcome, {user?.firstName || 'User'}</p>
       </div>
 
       {/* Navigation Menu */}
@@ -66,7 +46,7 @@ function AdminSidebar() {
                 to={item.path}
                 className={`flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
                   location.pathname === item.path
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-green-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                 }`}
               >
@@ -99,4 +79,4 @@ function AdminSidebar() {
   );
 }
 
-export default AdminSidebar;
+export default UserSidebar;

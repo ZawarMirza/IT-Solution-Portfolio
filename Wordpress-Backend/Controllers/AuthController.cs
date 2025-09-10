@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using ProductAPI.Data;
 using System.Linq;
+using System.ComponentModel.DataAnnotations;
 
 namespace Wordpress_Backend.Controllers
 {
@@ -68,8 +69,23 @@ namespace Wordpress_Backend.Controllers
 
             if (result.Succeeded)
             {
-                // Assign default role to new users
-                await _userManager.AddToRoleAsync(user, "User");
+                // Assign role based on registration request or default to User
+                string roleToAssign = "User"; // Default role
+                if (!string.IsNullOrEmpty(model.Role))
+                {
+                    if (model.Role == "Admin")
+                        roleToAssign = "Admin";
+                    else if (model.Role == "Guest")
+                        roleToAssign = "Guest";
+                }
+                await _userManager.AddToRoleAsync(user, roleToAssign);
+                
+                // Generate email confirmation token
+                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                
+                // In a real application, you would send an email here
+                // For now, we'll just log the token (remove this in production)
+                _logger.LogInformation("Email verification token for {Email}: {Token}", user.Email, emailToken);
                 
                 // Auto-login after registration to match frontend expectations
                 var roles = await _userManager.GetRolesAsync(user);
@@ -432,12 +448,107 @@ namespace Wordpress_Backend.Controllers
             return Ok(new { message = $"Updated CreatedAt for {updatedCount} users." });
         }
 
+        // POST: api/auth/verify-email
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByIdAsync(model.UserId);
+            if (user == null)
+                return NotFound("User not found");
+
+            var result = await _userManager.ConfirmEmailAsync(user, model.Token);
+            if (result.Succeeded)
+            {
+                return Ok(new { message = "Email verified successfully" });
+            }
+
+            return BadRequest(new { message = "Email verification failed" });
+        }
+
+        // POST: api/auth/forgot-password
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                // Don't reveal that the user does not exist
+                return Ok(new { message = "If an account exists with this email, you will receive a password reset link." });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            
+            // In a real application, you would send an email here
+            // For now, we'll just log the token (remove this in production)
+            _logger.LogInformation("Password reset token for {Email}: {Token}", user.Email, token);
+            
+            return Ok(new { message = "If an account exists with this email, you will receive a password reset link." });
+        }
+
+        // POST: api/auth/reset-password
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+                return BadRequest(new { message = "Invalid reset request" });
+
+            var result = await _userManager.ResetPasswordAsync(user, model.Token, model.NewPassword);
+            if (result.Succeeded)
+            {
+                return Ok(new { message = "Password reset successfully" });
+            }
+
+            var errors = result.Errors.Select(e => e.Description).ToArray();
+            return BadRequest(new { message = "Password reset failed", errors });
+        }
+
         // Model for updating user
         public class UpdateUserModel
         {
             public string? Email { get; set; }
             public string? UserName { get; set; }
             // Add other editable fields as needed
+        }
+
+        // Models for email verification and password reset
+        public class VerifyEmailModel
+        {
+            [Required]
+            public string UserId { get; set; } = string.Empty;
+            
+            [Required]
+            public string Token { get; set; } = string.Empty;
+        }
+
+        public class ForgotPasswordModel
+        {
+            [Required]
+            [EmailAddress]
+            public string Email { get; set; } = string.Empty;
+        }
+
+        public class ResetPasswordModel
+        {
+            [Required]
+            [EmailAddress]
+            public string Email { get; set; } = string.Empty;
+            
+            [Required]
+            public string Token { get; set; } = string.Empty;
+            
+            [Required]
+            [StringLength(100, MinimumLength = 6)]
+            public string NewPassword { get; set; } = string.Empty;
         }
     }
 }
