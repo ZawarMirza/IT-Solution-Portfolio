@@ -1,66 +1,54 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import axios from 'axios';
 
 const AdminRepositoriesPage = () => {
-    const [repositories, setRepositories] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [repositories, setRepositories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchRepositories = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // This would be your repositories API endpoint
-                // const response = await axios.get('http://localhost:5119/api/repositories');
-                // setRepositories(response.data);
-                
-                // For now, using mock data
-                setRepositories([
-                    {
-                        id: 1,
-                        name: 'wordpress-portfolio',
-                        description: 'A modern WordPress portfolio application built with React and ASP.NET Core',
-                        language: 'JavaScript',
-                        stars: 45,
-                        forks: 12,
-                        visibility: 'Public',
-                        createdAt: '2024-01-10'
-                    },
-                    {
-                        id: 2,
-                        name: 'react-components-library',
-                        description: 'Reusable React components for modern web applications',
-                        language: 'TypeScript',
-                        stars: 23,
-                        forks: 5,
-                        visibility: 'Public',
-                        createdAt: '2024-02-05'
-                    },
-                    {
-                        id: 3,
-                        name: 'api-backend-service',
-                        description: 'RESTful API backend service with authentication and authorization',
-                        language: 'C#',
-                        stars: 18,
-                        forks: 3,
-                        visibility: 'Private',
-                        createdAt: '2024-01-25'
-                    }
-                ]);
-            } catch (err) {
-                console.error('Error fetching repositories:', err);
-                setError('Failed to load repositories. Please try again later.');
-            } finally {
-                setLoading(false);
-            }
-        };
+  // Fetch repositories from API
+  useEffect(() => {
+    const fetchRepositories = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('http://localhost:5119/api/Repositories', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        setRepositories(response.data);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching repositories:', err);
+        setError('Failed to load repositories. Please try again later.');
+        setIsLoading(false);
+      }
+    };
 
-        fetchRepositories();
-    }, []);
+    fetchRepositories();
+  }, []);
 
-    if (loading) {
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this repository?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`http://localhost:5119/api/Repositories/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setRepositories(repositories.filter(repo => repo.id !== id));
+      } catch (err) {
+        console.error('Error deleting repository:', err);
+        setError('Failed to delete repository.');
+      }
+    }
+  };
+
+  if (isLoading) {
         return (
             <div className="container mx-auto py-6 px-4">
                 <h1 className="text-2xl font-bold text-gray-800 mb-6">Manage Repositories</h1>

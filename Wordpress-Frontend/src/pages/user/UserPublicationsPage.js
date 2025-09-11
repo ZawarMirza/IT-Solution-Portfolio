@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context';
+import axios from 'axios';
 
 const UserPublicationsPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -10,32 +11,49 @@ const UserPublicationsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('All');
 
-  // Mock data - replace with actual API call
+  // Fetch publications from API
   useEffect(() => {
     const fetchPublications = async () => {
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const response = await axios.get('http://localhost:5119/api/Publications');
         
-        // Mock research papers data
-        const mockPublications = [
-          {
-            id: 1,
-            title: 'Deep Learning Approaches for Natural Language Processing',
-            authors: ['Dr. Sarah Johnson', 'Prof. Michael Chen', 'Dr. Emily Rodriguez'],
-            domain: 'AI',
-            abstract: 'This paper presents novel deep learning architectures for natural language processing tasks, including sentiment analysis, named entity recognition, and machine translation. Our approach demonstrates significant improvements over existing state-of-the-art methods.',
-            thumbnail: '/images/papers/nlp-deep-learning.jpg',
-            documentPreview: '/docs/nlp-deep-learning-preview.pdf',
-            videoPreview: 'https://youtube.com/watch?v=example1',
-            downloadUrl: '/downloads/nlp-deep-learning.pdf',
-            publishedDate: '2023-10-15',
-            downloads: 1245,
-            keywords: ['deep learning', 'NLP', 'neural networks', 'transformers'],
-            status: 'published'
-          },
-          {
-            id: 2,
+        // Transform API data to match frontend structure
+        const transformedPublications = response.data.map(pub => ({
+          id: pub.id,
+          title: pub.title,
+          authors: JSON.parse(pub.authors || '[]'),
+          domain: pub.domain,
+          abstract: pub.abstract,
+          thumbnail: pub.thumbnailUrl,
+          documentPreview: pub.documentPreviewUrl,
+          videoPreview: pub.videoPreviewUrl,
+          downloadUrl: pub.downloadUrl,
+          publishedDate: pub.publishedDate,
+          downloads: pub.downloads,
+          keywords: JSON.parse(pub.keywords || '[]'),
+          status: pub.status
+        }));
+
+        // If no data from API, use fallback mock data
+        if (transformedPublications.length === 0) {
+          const mockPublications = [
+            {
+              id: 1,
+              title: 'Deep Learning Approaches for Natural Language Processing',
+              authors: ['Dr. Sarah Johnson', 'Prof. Michael Chen', 'Dr. Emily Rodriguez'],
+              domain: 'AI',
+              abstract: 'This paper presents novel deep learning architectures for natural language processing tasks, including sentiment analysis, named entity recognition, and machine translation. Our approach demonstrates significant improvements over existing state-of-the-art methods.',
+              thumbnail: '/images/papers/nlp-deep-learning.jpg',
+              documentPreview: '/docs/nlp-deep-learning-preview.pdf',
+              videoPreview: 'https://youtube.com/watch?v=example1',
+              downloadUrl: '/downloads/nlp-deep-learning.pdf',
+              publishedDate: '2023-10-15',
+              downloads: 1245,
+              keywords: ['deep learning', 'NLP', 'neural networks', 'transformers'],
+              status: 'published'
+            },
+            {
+              id: 2,
             title: 'Scalable Cloud Architecture Patterns for Microservices',
             authors: ['Dr. James Wilson', 'Prof. Lisa Zhang'],
             domain: 'Cloud',
@@ -111,11 +129,34 @@ const UserPublicationsPage = () => {
           }
         ];
         
-        setPublications(mockPublications);
+          setPublications(mockPublications);
+        } else {
+          setPublications(transformedPublications);
+        }
+        
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching publications:', err);
-        setError('Failed to load publications. Please try again later.');
+        // Fallback to mock data on error
+        const mockPublications = [
+          {
+            id: 1,
+            title: 'Deep Learning Approaches for Natural Language Processing',
+            authors: ['Dr. Sarah Johnson', 'Prof. Michael Chen', 'Dr. Emily Rodriguez'],
+            domain: 'AI',
+            abstract: 'This paper presents novel deep learning architectures for natural language processing tasks, including sentiment analysis, named entity recognition, and machine translation. Our approach demonstrates significant improvements over existing state-of-the-art methods.',
+            thumbnail: '/images/papers/nlp-deep-learning.jpg',
+            documentPreview: '/docs/nlp-deep-learning-preview.pdf',
+            videoPreview: 'https://youtube.com/watch?v=example1',
+            downloadUrl: '/downloads/nlp-deep-learning.pdf',
+            publishedDate: '2023-10-15',
+            downloads: 1245,
+            keywords: ['deep learning', 'NLP', 'neural networks', 'transformers'],
+            status: 'published'
+          }
+        ];
+        setPublications(mockPublications);
+        setError('Using offline data. Backend connection failed.');
         setIsLoading(false);
       }
     };
@@ -139,14 +180,37 @@ const UserPublicationsPage = () => {
     return matchesSearch && matchesDomain;
   });
 
-  const handleDownload = (publication) => {
+  const handleDownload = async (publication) => {
     if (!isAuthenticated()) {
       alert('Please login to download publications.');
       return;
     }
     
-    if (publication.downloadUrl) {
-      window.open(publication.downloadUrl, '_blank');
+    try {
+      // Increment download count via API
+      await axios.post(`http://localhost:5119/api/Publications/${publication.id}/download`, {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      // Update local state
+      setPublications(publications.map(pub => 
+        pub.id === publication.id 
+          ? { ...pub, downloads: pub.downloads + 1 }
+          : pub
+      ));
+      
+      // Open download
+      if (publication.downloadUrl) {
+        window.open(publication.downloadUrl, '_blank');
+      }
+    } catch (err) {
+      console.error('Error tracking download:', err);
+      // Still allow download even if tracking fails
+      if (publication.downloadUrl) {
+        window.open(publication.downloadUrl, '_blank');
+      }
     }
   };
 

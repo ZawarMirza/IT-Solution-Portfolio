@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Wordpress-Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dfc1c775317f85e669aa16549b923425a8f95011")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4854c5364584550592a5f609480f62c83432ea85")]
 [assembly: System.Reflection.AssemblyProductAttribute("Wordpress-Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Wordpress-Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

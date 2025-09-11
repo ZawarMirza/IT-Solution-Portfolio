@@ -1,52 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const AdminPublicationsPage = () => {
     const [publications, setPublications] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchPublications = async () => {
-            setLoading(true);
-            setError(null);
             try {
-                // This would be your publications API endpoint
-                // const response = await axios.get('http://localhost:5119/api/publications');
-                // setPublications(response.data);
-                
-                // For now, using mock data
-                setPublications([
-                    {
-                        id: 1,
-                        title: 'React Best Practices Guide',
-                        author: 'Admin User',
-                        status: 'Published',
-                        downloads: 1250,
-                        createdAt: '2024-01-15'
-                    },
-                    {
-                        id: 2,
-                        title: 'Modern JavaScript Handbook',
-                        author: 'Admin User',
-                        status: 'Draft',
-                        downloads: 0,
-                        createdAt: '2024-02-10'
+                const token = localStorage.getItem('token');
+                const response = await axios.get('http://localhost:5119/api/Publications', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
                     }
-                ]);
+                });
+                
+                setPublications(response.data);
+                setIsLoading(false);
             } catch (err) {
                 console.error('Error fetching publications:', err);
                 setError('Failed to load publications. Please try again later.');
-            } finally {
-                setLoading(false);
+                setIsLoading(false);
             }
         };
 
         fetchPublications();
     }, []);
 
-    if (loading) {
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this publication?')) {
+            try {
+                const token = localStorage.getItem('token');
+                await axios.delete(`http://localhost:5119/api/Publications/${id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                setPublications(publications.filter(pub => pub.id !== id));
+            } catch (err) {
+                console.error('Error deleting publication:', err);
+                setError('Failed to delete publication.');
+            }
+        }
+    };
+
+    if (isLoading) {
         return (
             <div className="container mx-auto py-6 px-4">
                 <h1 className="text-2xl font-bold text-gray-800 mb-6">Manage Publications</h1>
@@ -115,16 +116,18 @@ const AdminPublicationsPage = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                                            {publication.author}
+                                            {JSON.parse(publication.authors || '[]').join(', ')}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                            publication.status === 'Published' 
+                                            publication.status === 'published' 
                                                 ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                                                : publication.status === 'draft'
+                                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                                                : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
                                         }`}>
-                                            {publication.status}
+                                            {publication.status.charAt(0).toUpperCase() + publication.status.slice(1)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -137,7 +140,10 @@ const AdminPublicationsPage = () => {
                                         <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3">
                                             Edit
                                         </button>
-                                        <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                        <button 
+                                            onClick={() => handleDelete(publication.id)}
+                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                        >
                                             Delete
                                         </button>
                                     </td>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProductAPI.Models;
+using Wordpress_Backend.Models;
 using Microsoft.AspNetCore.Identity;
 
 namespace ProductAPI.Data
@@ -14,6 +15,8 @@ namespace ProductAPI.Data
 
         public DbSet<Product> Products { get; set; }
         public DbSet<Domain> Domains { get; set; }
+        public DbSet<Publication> Publications { get; set; }
+        public DbSet<Repository> Repositories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,6 +55,34 @@ namespace ProductAPI.Data
                 entity.HasKey(d => d.Id);
                 entity.Property(d => d.Name).IsRequired().HasMaxLength(100);
                 entity.HasIndex(d => d.Name).IsUnique();
+            });
+
+            // Configure Publication
+            modelBuilder.Entity<Publication>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+                entity.Property(p => p.Title).IsRequired().HasMaxLength(200);
+                entity.Property(p => p.Authors).IsRequired();
+                entity.Property(p => p.Domain).IsRequired().HasMaxLength(50);
+                entity.Property(p => p.Abstract).IsRequired();
+                entity.Property(p => p.Keywords).IsRequired();
+                entity.Property(p => p.Status).IsRequired().HasMaxLength(20);
+                entity.Property(p => p.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(p => p.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            // Configure Repository
+            modelBuilder.Entity<Repository>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.Property(r => r.Name).IsRequired().HasMaxLength(200);
+                entity.Property(r => r.Description).IsRequired();
+                entity.Property(r => r.Domain).IsRequired().HasMaxLength(50);
+                entity.Property(r => r.Category).IsRequired().HasMaxLength(20);
+                entity.Property(r => r.Technologies).IsRequired();
+                entity.Property(r => r.Status).IsRequired().HasMaxLength(20);
+                entity.Property(r => r.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(r => r.LastUpdated).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // Configure Identity table names

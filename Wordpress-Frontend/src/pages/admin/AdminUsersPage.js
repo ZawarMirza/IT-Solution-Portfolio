@@ -7,66 +7,103 @@ const AdminUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
-  const [editFormData, setEditFormData] = useState({ email: '', userName: '' });
+  const [editFormData, setEditFormData] = useState({ email: '', userName: '', role: '' });
+  const [availableRoles, setAvailableRoles] = useState([]);
+  const [userStats, setUserStats] = useState(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('adminToken');
-        console.log('Token retrieved from localStorage:', token ? 'Token exists' : 'No token found');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        console.log('Headers for API request:', headers);
-        const response = await axios.get('http://localhost:5119/api/auth/users', { headers });
-        console.log('User data from API:', response.data);
-        setUsers(response.data);
+        const token = localStorage.getItem('token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        // Fetch users, roles, and stats in parallel
+        const [usersResponse, rolesResponse, statsResponse] = await Promise.all([
+          axios.get('http://localhost:5119/api/Users', { headers }),
+          axios.get('http://localhost:5119/api/Users/roles', { headers }),
+          axios.get('http://localhost:5119/api/Users/stats', { headers })
+        ]);
+
+        setUsers(usersResponse.data);
+        setAvailableRoles(rolesResponse.data);
+        setUserStats(statsResponse.data);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching users:', err);
+        console.error('Error fetching data:', err);
         if (err.response && err.response.status === 401) {
-          setError('Access denied. Please log in as an admin at /admin/login to view user accounts.');
+          setError('Access denied. Please log in as an admin.');
         } else if (err.response && err.response.status === 403) {
-          setError('Permission denied. Your account does not have administrator privileges.');
-        } else if (err.response && err.response.status === 404) {
-          setError('User listing API endpoint not found. Please ensure the backend implements the endpoint at api/auth/users.');
+          setError('Permission denied. Admin privileges required.');
         } else {
-          setError('Failed to load users. Please check if the backend server is running and try again.');
+          setError('Failed to load data. Please try again.');
         }
         setLoading(false);
       }
     };
 
-    fetchUsers();
+    fetchData();
   }, []);
 
   const handleDeleteUser = async (id) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
-      setLoading(true);
-      setError(null);
       try {
-        // Removed token check to match backend's non-authenticated delete endpoint
-        const response = await axios.delete(`http://localhost:5119/api/auth/users/${id}`);
-        console.log('Delete request response:', response);
+        const token = localStorage.getItem('token');
+        await axios.delete(`http://localhost:5119/api/Users/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         setUsers(users.filter(user => user.id !== id));
-        alert('User deleted successfully');
       } catch (err) {
         console.error('Error deleting user:', err);
-        if (err.response) {
-          console.error('Response data:', err.response.data);
-          console.error('Response status:', err.response.status);
-          console.error('Response headers:', err.response.headers);
-          setError(`Failed to delete user. Status: ${err.response.status}. Message: ${err.response.data.message || 'Unknown error'}`);
-        } else if (err.request) {
-          console.error('Request:', err.request);
-          setError('Failed to delete user. No response received from server.');
-        } else {
-          console.error('Error message:', err.message);
-          setError(`Failed to delete user. Error: ${err.message}`);
-        }
-      } finally {
-        setLoading(false);
+        setError('Failed to delete user.');
       }
+    }
+  };
+
+  const handleBlockUser = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5119/api/Users/${id}/block`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setUsers(users.map(user => 
+        user.id === id ? { ...user, isBlocked: true } : user
+      ));
+    } catch (err) {
+      console.error('Error blocking user:', err);
+      setError('Failed to block user.');
+    }
+  };
+
+  const handleUnblockUser = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5119/api/Users/${id}/unblock`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setUsers(users.map(user => 
+        user.id === id ? { ...user, isBlocked: false } : user
+      ));
+    } catch (err) {
+      console.error('Error unblocking user:', err);
+      setError('Failed to unblock user.');
+    }
+  };
+
+  const handleUpdateRole = async (userId, newRole) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5119/api/Users/${userId}/role`, 
+        { role: newRole },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, roles: [newRole] } : user
+      ));
+    } catch (err) {
+      console.error('Error updating role:', err);
+      setError('Failed to update user role.');
     }
   };
 

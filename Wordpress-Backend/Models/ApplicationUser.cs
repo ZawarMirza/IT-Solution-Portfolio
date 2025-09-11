@@ -18,9 +18,17 @@ namespace ProductAPI.Models
 
         public bool IsActive { get; set; } = true;
         
+        public bool IsBlocked { get; set; } = false;
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
-        public DateTime? LastLoginAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        
+        public DateTime? LastLogin { get; set; }
+        
+        public string? RefreshToken { get; set; }
+        
+        public DateTime? RefreshTokenExpiryTime { get; set; }
         
         // Navigation property for products created by this user
         public virtual ICollection<Product> Products { get; set; } = new HashSet<Product>();

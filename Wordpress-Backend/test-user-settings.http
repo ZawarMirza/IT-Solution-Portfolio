@@ -1,0 +1,39 @@
+@baseUrl = http://localhost:5119/api/auth
+
+### Login to get a token
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "User@123"
+}
+
+### Update Profile (replace TOKEN with the actual token from login)
+PUT {{baseUrl}}/update-profile
+Content-Type: application/json
+Authorization: Bearer TOKEN
+
+{
+  "firstName": "Updated",
+  "lastName": "User",
+  "email": "user@example.com"
+}
+
+### Change Password (replace TOKEN with the actual token from login)
+PUT {{baseUrl}}/change-password
+Content-Type: application/json
+Authorization: Bearer TOKEN
+
+{
+  "currentPassword": "User@123",
+  "newPassword": "NewPassword@123"
+}
+
+### Refresh Token (replace REFRESH_TOKEN with the actual refresh token from login)
+POST {{baseUrl}}/refresh-token
+Content-Type: application/json
+
+{
+  "token": "REFRESH_TOKEN"
+}
