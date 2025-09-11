@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-
 import { AuthProvider, ROLES } from "./context";
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
+import Footer from './components/Footer';
+import { Link } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
 // Public Pages
 import HomePage from './pages/HomePage';
@@ -56,18 +59,31 @@ import './index.css';
 
 // Layout components for different route groups
 const MainLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50">
+  <div className="min-h-screen bg-gray-50 flex flex-col">
     <Navigation />
-    <main className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-8 flex-grow">
       {children}
     </main>
+    <Footer />
   </div>
 );
 
 const AuthLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50">
-    <Navigation />
-    {children}
+  <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="bg-white shadow-sm">
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between h-16 items-center">
+          <Link to="/" className="text-xl font-bold text-indigo-600 hover:text-indigo-800">
+            Your Logo
+          </Link>
+        </div>
+      </div>
+    </div>
+    <main className="flex-grow flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {children}
+      </div>
+    </main>
   </div>
 );
 
@@ -168,6 +184,7 @@ function App() {
         
         {/* Session Timeout Modal */}
         <SessionTimeoutModal />
+        <Toaster position="top-right" />
       </AuthProvider>
     </Router>
   );

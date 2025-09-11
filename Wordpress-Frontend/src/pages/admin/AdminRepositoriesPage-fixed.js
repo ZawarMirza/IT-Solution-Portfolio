@@ -73,126 +73,73 @@ const AdminRepositoriesPage = () => {
     }));
   };
 
-  // Handle repository edit
-  const handleEdit = (repo) => {
-    setNewRepo({
-      ...repo,
-      // Ensure we have all required fields with default values if missing
-      title: repo.title || '',
-      description: repo.description || '',
-      githubUrl: repo.githubUrl || '',
-      documentPreview: repo.documentPreview || '',
-      tags: repo.tags || [],
-      domain: repo.domain || '',
-      licenseType: repo.licenseType || 'MIT',
-      licenseVersion: repo.licenseVersion || '1.0.0',
-      accessType: repo.accessType || 'free',
-      isFeatured: repo.isFeatured || false,
-      id: repo.id // Keep the original ID for update
-    });
-    setShowModal(true);
-  };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    
     setIsSubmitting(true);
-    const token = localStorage.getItem('token');
-    const apiUrl = `${API_BASE_URL}/api/Repositories`;
     
     try {
-      let response;
-      
-      if (newRepo.id) {
-        // Update existing repository
-        response = await axios.put(`${apiUrl}/${newRepo.id}`, newRepo, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        toast.success('Repository updated successfully!');
-      } else {
-        // Create new repository
-        response = await axios.post(apiUrl, newRepo, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        toast.success('Repository created successfully!');
-      }
-      
-      // Reset form
-      setNewRepo({
-        title: '',
-        description: '',
-        githubUrl: '',
-        documentPreview: '',
-        tags: [],
-        domain: '',
-        licenseType: 'MIT',
-        licenseVersion: '1.0.0',
-        accessType: 'free',
-        isFeatured: false
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/api/Repositories', newRepo, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
-      // Close modal and refresh data
-      setShowModal(false);
-      await fetchData();
+      if (response.status === 201) {
+        toast.success('Repository added successfully!');
+        setShowModal(false);
+        // Reset form
+        setNewRepo({
+          title: '',
+          description: '',
+          githubUrl: '',
+          documentPreview: '',
+          tags: [],
+          domain: '',
+          licenseType: 'MIT',
+          licenseVersion: '1.0.0',
+          accessType: 'free',
+          isFeatured: false
+        });
+        // Refresh repositories
+        fetchData();
+      }
     } catch (error) {
-      console.error('Error saving repository:', error);
-      const errorMessage = error.response?.data?.message || 'An error occurred while saving the repository';
-      toast.error(errorMessage, { duration: 4000 });
+      console.error('Error adding repository:', error);
+      toast.error(error.response?.data?.message || 'Failed to add repository');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // Fetch repositories and domains from API
-  const API_BASE_URL = 'http://localhost:5119';
-
-  const fetchData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Fetch repositories and domains in parallel
-      const [reposResponse, domainsResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/Repositories`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get(`${API_BASE_URL}/api/Domains`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
-      
-      setRepositories(reposResponse.data);
-      setDomains([{ id: 'all', name: 'All Domains' }, ...domainsResponse.data]);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to load data. Please try again later.');
-      toast.error('Failed to load repositories. Please refresh the page.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Initial data fetch
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [reposResponse, domainsResponse] = await Promise.all([
+          axios.get('/api/Repositories'),
+          axios.get('/api/Domains')
+        ]);
+        
+        setRepositories(reposResponse.data);
+        setDomains(domainsResponse.data);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load repositories. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
   
   // Filter repositories by selected domain
-  const filteredRepositories = selectedDomain === 'all' 
-    ? repositories 
-    : repositories.filter(repo => repo.domain === selectedDomain);
-    
-  // Group repositories by domain
-  const repositoriesByDomain = filteredRepositories.reduce((acc, repo) => {
-    const domain = repo.domain || 'Other';
+  const repositoriesByDomain = repositories.reduce((acc, repo) => {
+    const domain = repo.domain || 'Uncategorized';
     if (!acc[domain]) {
       acc[domain] = [];
     }
@@ -200,26 +147,20 @@ const AdminRepositoriesPage = () => {
     return acc;
   }, {});
 
+  // Handle repository deletion
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this repository? This action cannot be undone.')) {
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/api/Repositories/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // Update local state to reflect the deletion
-      setRepositories(prev => prev.filter(repo => repo.id !== id));
-      toast.success('Repository deleted successfully');
-    } catch (error) {
-      console.error('Error deleting repository:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to delete repository';
-      toast.error(errorMessage);
+    if (window.confirm('Are you sure you want to delete this repository?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`/api/Repositories/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        toast.success('Repository deleted successfully');
+        setRepositories(repos => repos.filter(repo => repo.id !== id));
+      } catch (error) {
+        console.error('Error deleting repository:', error);
+        toast.error('Failed to delete repository');
+      }
     }
   };
 
@@ -232,7 +173,7 @@ const AdminRepositoriesPage = () => {
             href={githubUrl} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
             <svg className="-ml-1 mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
               <path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -292,28 +233,25 @@ const AdminRepositoriesPage = () => {
         <h1 className="text-2xl font-bold text-gray-800">Manage Repositories</h1>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="w-full sm:w-48">
-            <select
-              value={selectedDomain}
-              onChange={(e) => setSelectedDomain(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            >
-              {domains.map((domain) => (
-                <option key={domain.id} value={domain.id}>
-                  {domain.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select 
+            value={selectedDomain} 
+            onChange={(e) => setSelectedDomain(e.target.value)}
+            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="all">All Domains</option>
+            {domains.map(domain => (
+              <option key={domain.id} value={domain.name}>{domain.name}</option>
+            ))}
+          </select>
           
           <button
             onClick={() => setShowModal(true)}
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 01-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
             </svg>
-            New Repository
+            Add Repository
           </button>
         </div>
       </div>
@@ -327,9 +265,10 @@ const AdminRepositoriesPage = () => {
                 <h2 className="text-xl font-semibold text-gray-800">Add New Repository</h2>
                 <button 
                   onClick={() => setShowModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-400 hover:text-gray-500"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -348,7 +287,7 @@ const AdminRepositoriesPage = () => {
                       name="title"
                       value={newRepo.title}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       required
                     />
                   </div>
@@ -356,7 +295,7 @@ const AdminRepositoriesPage = () => {
                   {/* Description */}
                   <div>
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                      Description *
+                      Description
                     </label>
                     <textarea
                       id="description"
@@ -364,8 +303,7 @@ const AdminRepositoriesPage = () => {
                       rows={3}
                       value={newRepo.description}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      required
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
                   
@@ -380,8 +318,7 @@ const AdminRepositoriesPage = () => {
                       name="githubUrl"
                       value={newRepo.githubUrl}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      placeholder="https://github.com/username/repo"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       required
                     />
                   </div>
@@ -397,8 +334,7 @@ const AdminRepositoriesPage = () => {
                       name="documentPreview"
                       value={newRepo.documentPreview}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      placeholder="https://example.com/preview"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
                   
@@ -412,75 +348,82 @@ const AdminRepositoriesPage = () => {
                         type="text"
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
-                        className="block w-full rounded-l-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        placeholder="Add a tag"
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddTag(e)}
+                        placeholder="Add a tag and press Enter"
+                        className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                       <button
                         type="button"
                         onClick={handleAddTag}
-                        className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-r-md"
+                        className="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-r-md"
                       >
                         Add
                       </button>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {newRepo.tags.map((tag, index) => (
-                        <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="ml-1.5 inline-flex items-center justify-center h-4 w-4 rounded-full bg-indigo-200 text-indigo-600 hover:bg-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
-                          >
-                            <span className="sr-only">Remove tag</span>
-                            <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
-                              <path strokeLinecap="round" strokeWidth="1.5" d="M1 1l6 6m0-6L1 7" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                    {newRepo.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {newRepo.tags.map((tag) => (
+                          <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTag(tag)}
+                              className="ml-1.5 inline-flex items-center justify-center h-4 w-4 rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 focus:outline-none focus:bg-indigo-500 focus:text-white"
+                            >
+                              <span className="sr-only">Remove tag</span>
+                              <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+                                <path strokeLinecap="round" strokeWidth="1.5" d="M1 1l6 6m0-6L1 7" />
+                              </svg>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
-                  {/* Domain */}
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Domain</label>
-                    <select
-                      name="domain"
-                      value={newRepo.domain}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                      required
-                    >
-                      <option value="">Select a domain</option>
-                      {domains.filter(d => d.id !== 'all').map((domain) => (
-                        <option key={domain.id} value={domain.id}>
-                          {domain.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Access Type */}
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Access Type</label>
-                    <select
-                      name="accessType"
-                      value={newRepo.accessType}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                      required
-                    >
-                      {ACCESS_TYPES.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* License Type and Version */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Domain */}
+                    <div>
+                      <label htmlFor="domain" className="block text-sm font-medium text-gray-700">
+                        Domain *
+                      </label>
+                      <select
+                        id="domain"
+                        name="domain"
+                        value={newRepo.domain}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        required
+                      >
+                        <option value="">Select a domain</option>
+                        {domains.map(domain => (
+                          <option key={domain.id} value={domain.name}>{domain.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Access Type */}
+                    <div>
+                      <label htmlFor="accessType" className="block text-sm font-medium text-gray-700">
+                        Access Type *
+                      </label>
+                      <select
+                        id="accessType"
+                        name="accessType"
+                        value={newRepo.accessType}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        required
+                      >
+                        {ACCESS_TYPES.map(type => (
+                          <option key={type.id} value={type.id}>
+                            {type.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* License Type */}
                     <div>
                       <label htmlFor="licenseType" className="block text-sm font-medium text-gray-700">
                         License Type
@@ -490,15 +433,17 @@ const AdminRepositoriesPage = () => {
                         name="licenseType"
                         value={newRepo.licenseType}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                       >
-                        {LICENSE_TYPES.map((license) => (
+                        {LICENSE_TYPES.map(license => (
                           <option key={license} value={license}>
                             {license}
                           </option>
                         ))}
                       </select>
                     </div>
+                    
+                    {/* License Version */}
                     <div>
                       <label htmlFor="licenseVersion" className="block text-sm font-medium text-gray-700">
                         License Version
@@ -509,13 +454,12 @@ const AdminRepositoriesPage = () => {
                         name="licenseVersion"
                         value={newRepo.licenseVersion}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        placeholder="e.g., 1.0.0"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       />
                     </div>
                   </div>
                   
-                  {/* Featured Toggle */}
+                  {/* Is Featured */}
                   <div className="flex items-center">
                     <input
                       id="isFeatured"
