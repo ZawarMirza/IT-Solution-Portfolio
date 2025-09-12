@@ -232,13 +232,6 @@ const UserPublicationsPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Research Publications</h1>
           <p className="mt-1 text-gray-600">Browse and manage research publications</p>
         </div>
-        <button
-          onClick={handleOpenModal}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <FiPlus className="mr-2 h-4 w-4" />
-          Add New Publication
-        </button>
       </div>
 
       {/* Search and Filter */}
