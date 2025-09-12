@@ -1,8 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+
+// API Configuration
+const API_BASE_URL = 'http://localhost:5119';
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized access
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const LICENSE_TYPES = [
   'MIT',
@@ -20,13 +56,16 @@ const ACCESS_TYPES = [
 ];
 
 const AdminRepositoriesPage = () => {
+  const navigate = useNavigate();
   const [repositories, setRepositories] = useState([]);
+  const [filteredRepos, setFilteredRepos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [domains, setDomains] = useState([]);
   const [selectedDomain, setSelectedDomain] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // New repository form state
   const [newRepo, setNewRepo] = useState({
@@ -44,6 +83,40 @@ const AdminRepositoriesPage = () => {
   
   const [newTag, setNewTag] = useState('');
 
+  // Open modal with empty form
+  const openAddModal = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setNewRepo({
+      name: '',
+      description: '',
+      domain: '',
+      category: 'Free',
+      gitHubUrl: '',
+      downloadUrl: '',
+      documentPreviewUrl: '',
+      licenseType: 'MIT',
+      version: '1.0.0',
+      technologies: [],
+      accessLevel: 'public',
+      stars: 0,
+      forks: 0,
+      downloads: 0,
+      isFeatured: false
+    });
+    setShowModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setShowModal(false);
+    // Re-enable body scroll when modal is closed
+    document.body.style.overflow = 'auto';
+  };
+
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -53,23 +126,24 @@ const AdminRepositoriesPage = () => {
     }));
   };
 
-  // Handle tag addition
-  const handleAddTag = (e) => {
+  // Handle technology addition
+  const handleAddTechnology = (e) => {
     e.preventDefault();
-    if (newTag.trim() && !newRepo.tags.includes(newTag.trim())) {
+    const tech = newTag.trim();
+    if (tech && !newRepo.technologies?.includes(tech)) {
       setNewRepo(prev => ({
         ...prev,
-        tags: [...prev.tags, newTag.trim()]
+        technologies: [...(prev.technologies || []), tech]
       }));
       setNewTag('');
     }
   };
 
-  // Handle tag removal
-  const handleRemoveTag = (tagToRemove) => {
+  // Handle technology removal
+  const handleRemoveTechnology = (techToRemove) => {
     setNewRepo(prev => ({
       ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
+      technologies: (prev.technologies || []).filter(tech => tech !== techToRemove)
     }));
   };
 
@@ -77,20 +151,45 @@ const AdminRepositoriesPage = () => {
   const handleEdit = (repo) => {
     setNewRepo({
       ...repo,
-      // Ensure we have all required fields with default values if missing
-      title: repo.title || '',
+      // Parse technologies from JSON string if needed
+      technologies: typeof repo.technologies === 'string' 
+        ? JSON.parse(repo.technologies || '[]') 
+        : repo.technologies || [],
+      // Ensure we have all required fields with default values
+      name: repo.name || '',
       description: repo.description || '',
-      githubUrl: repo.githubUrl || '',
-      documentPreview: repo.documentPreview || '',
-      tags: repo.tags || [],
       domain: repo.domain || '',
+      category: repo.category || 'Free',
+      gitHubUrl: repo.gitHubUrl || '',
+      downloadUrl: repo.downloadUrl || '',
+      documentPreviewUrl: repo.documentPreviewUrl || '',
       licenseType: repo.licenseType || 'MIT',
-      licenseVersion: repo.licenseVersion || '1.0.0',
-      accessType: repo.accessType || 'free',
+      version: repo.version || '1.0.0',
+      accessLevel: repo.accessLevel || 'public',
+      stars: repo.stars || 0,
+      forks: repo.forks || 0,
+      downloads: repo.downloads || 0,
       isFeatured: repo.isFeatured || false,
       id: repo.id // Keep the original ID for update
     });
     setShowModal(true);
+  };
+
+  // Validate repository form
+  const validateForm = () => {
+    if (!newRepo.name?.trim()) {
+      toast.error('Name is required');
+      return false;
+    }
+    if (!newRepo.description?.trim()) {
+      toast.error('Description is required');
+      return false;
+    }
+    if (!newRepo.domain) {
+      toast.error('Please select a domain');
+      return false;
+    }
+    return true;
   };
 
   // Handle form submission
@@ -98,44 +197,52 @@ const AdminRepositoriesPage = () => {
     e.preventDefault();
     if (isSubmitting) return;
     
+    if (!validateForm()) return;
+    
     setIsSubmitting(true);
-    const token = localStorage.getItem('token');
-    const apiUrl = `${API_BASE_URL}/api/Repositories`;
     
     try {
-      let response;
+      const repoData = {
+        ...newRepo,
+        name: newRepo.name.trim(),
+        description: newRepo.description.trim(),
+        gitHubUrl: newRepo.gitHubUrl?.trim() || null,
+        downloadUrl: newRepo.downloadUrl?.trim() || null,
+        documentPreviewUrl: newRepo.documentPreviewUrl?.trim() || null,
+        technologies: Array.isArray(newRepo.technologies) 
+          ? JSON.stringify(newRepo.technologies) 
+          : '[]',
+        lastUpdated: new Date().toISOString(),
+        createdBy: newRepo.id ? newRepo.createdBy : null, // Keep existing createdBy for updates
+        createdAt: newRepo.id ? newRepo.createdAt : new Date().toISOString() // Keep original creation date for updates
+      };
       
       if (newRepo.id) {
         // Update existing repository
-        response = await axios.put(`${apiUrl}/${newRepo.id}`, newRepo, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await api.put(`/api/Repositories/${newRepo.id}`, repoData);
         toast.success('Repository updated successfully!');
       } else {
         // Create new repository
-        response = await axios.post(apiUrl, newRepo, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await api.post('/api/Repositories', repoData);
         toast.success('Repository created successfully!');
       }
       
-      // Reset form
+      // Reset form to default values
       setNewRepo({
-        title: '',
+        name: '',
         description: '',
-        githubUrl: '',
-        documentPreview: '',
-        tags: [],
         domain: '',
+        category: 'Free',
+        gitHubUrl: '',
+        downloadUrl: '',
+        documentPreviewUrl: '',
         licenseType: 'MIT',
-        licenseVersion: '1.0.0',
-        accessType: 'free',
+        version: '1.0.0',
+        technologies: [],
+        accessLevel: 'public',
+        stars: 0,
+        forks: 0,
+        downloads: 0,
         isFeatured: false
       });
       
@@ -151,48 +258,89 @@ const AdminRepositoriesPage = () => {
     }
   };
 
-  // Fetch repositories and domains from API
-  const API_BASE_URL = 'http://localhost:5119';
-
-  const fetchData = async () => {
+  // Function to refresh data
+  const fetchData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      
-      // Fetch repositories and domains in parallel
+      setIsLoading(true);
       const [reposResponse, domainsResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/Repositories`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get(`${API_BASE_URL}/api/Domains`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        api.get('/api/Repositories'),
+        api.get('/api/Domains')
       ]);
       
       setRepositories(reposResponse.data);
+      setFilteredRepos(reposResponse.data);
       setDomains([{ id: 'all', name: 'All Domains' }, ...domainsResponse.data]);
       setError(null);
+      return reposResponse.data;
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Failed to load data. Please try again later.');
       toast.error('Failed to load repositories. Please refresh the page.');
+      throw err;
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchData();
   }, []);
   
-  // Filter repositories by selected domain
-  const filteredRepositories = selectedDomain === 'all' 
-    ? repositories 
-    : repositories.filter(repo => repo.domain === selectedDomain);
+  // Fetch data on component mount
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
     
-  // Group repositories by domain
-  const repositoriesByDomain = filteredRepositories.reduce((acc, repo) => {
-    const domain = repo.domain || 'Other';
+    const loadData = async () => {
+      try {
+        const [reposResponse, domainsResponse] = await Promise.all([
+          api.get('/api/Repositories', { signal }),
+          api.get('/api/Domains', { signal })
+        ]);
+        
+        setRepositories(reposResponse.data);
+        setFilteredRepos(reposResponse.data);
+        setDomains([{ id: 'all', name: 'All Domains' }, ...domainsResponse.data]);
+        setError(null);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Error loading data:', err);
+          setError('Failed to load data. Please try again later.');
+          toast.error('Failed to load repositories. Please refresh the page.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  // Filter repositories based on search and domain
+  useEffect(() => {
+    let result = [...repositories];
+    
+    // Filter by domain
+    if (selectedDomain && selectedDomain !== 'all') {
+      result = result.filter(repo => repo.domain === selectedDomain);
+    }
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(repo => 
+        repo.title.toLowerCase().includes(query) ||
+        (repo.description && repo.description.toLowerCase().includes(query)) ||
+        (repo.tags && repo.tags.some(tag => tag.toLowerCase().includes(query)))
+      );
+    }
+    
+    setFilteredRepos(result);
+  }, [repositories, selectedDomain, searchQuery]);
+
+  // Group repositories by domain for display
+  const repositoriesByDomain = filteredRepos.reduce((acc, repo) => {
+    const domain = domains.find(d => d.id === repo.domain)?.name || 'Other';
     if (!acc[domain]) {
       acc[domain] = [];
     }
@@ -200,26 +348,23 @@ const AdminRepositoriesPage = () => {
     return acc;
   }, {});
 
+  // Handle repository deletion
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this repository? This action cannot be undone.')) {
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/api/Repositories/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // Update local state to reflect the deletion
-      setRepositories(prev => prev.filter(repo => repo.id !== id));
-      toast.success('Repository deleted successfully');
-    } catch (error) {
-      console.error('Error deleting repository:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to delete repository';
-      toast.error(errorMessage);
+    if (window.confirm('Are you sure you want to delete this repository? This action cannot be undone.')) {
+      try {
+        await api.delete(`/api/Repositories/${id}`);
+        toast.success('Repository deleted successfully!');
+        
+        // Optimistic UI update
+        setRepositories(prev => prev.filter(repo => repo.id !== id));
+      } catch (error) {
+        console.error('Error deleting repository:', error);
+        const errorMessage = error.response?.data?.message || 'Failed to delete repository';
+        toast.error(errorMessage);
+        
+        // Re-fetch data to ensure consistency
+        await fetchData();
+      }
     }
   };
 
@@ -307,7 +452,7 @@ const AdminRepositoriesPage = () => {
           </div>
           
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openAddModal}
             className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -320,13 +465,29 @@ const AdminRepositoriesPage = () => {
 
       {/* Add Repository Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-[9999]"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={closeModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Add New Repository</h2>
                 <button 
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -344,9 +505,9 @@ const AdminRepositoriesPage = () => {
                     </label>
                     <input
                       type="text"
-                      id="title"
-                      name="title"
-                      value={newRepo.title}
+                      id="name"
+                      name="name"
+                      value={newRepo.name || ''}
                       onChange={handleInputChange}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       required
@@ -371,14 +532,14 @@ const AdminRepositoriesPage = () => {
                   
                   {/* GitHub URL */}
                   <div>
-                    <label htmlFor="githubUrl" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="gitHubUrl" className="block text-sm font-medium text-gray-700">
                       GitHub URL *
                     </label>
                     <input
                       type="url"
-                      id="githubUrl"
-                      name="githubUrl"
-                      value={newRepo.githubUrl}
+                      id="gitHubUrl"
+                      name="gitHubUrl"
+                      value={newRepo.gitHubUrl || ''}
                       onChange={handleInputChange}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       placeholder="https://github.com/username/repo"
@@ -388,14 +549,14 @@ const AdminRepositoriesPage = () => {
                   
                   {/* Document Preview */}
                   <div>
-                    <label htmlFor="documentPreview" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="documentPreviewUrl" className="block text-sm font-medium text-gray-700">
                       Document Preview URL
                     </label>
                     <input
                       type="url"
-                      id="documentPreview"
-                      name="documentPreview"
-                      value={newRepo.documentPreview}
+                      id="documentPreviewUrl"
+                      name="documentPreviewUrl"
+                      value={newRepo.documentPreviewUrl || ''}
                       onChange={handleInputChange}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       placeholder="https://example.com/preview"
@@ -417,19 +578,19 @@ const AdminRepositoriesPage = () => {
                       />
                       <button
                         type="button"
-                        onClick={handleAddTag}
+                        onClick={handleAddTechnology}
                         className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-r-md"
                       >
                         Add
                       </button>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {newRepo.tags.map((tag, index) => (
+                      {newRepo.technologies?.map((tech, index) => (
                         <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          {tag}
+                          {tech}
                           <button
                             type="button"
-                            onClick={() => handleRemoveTag(tag)}
+                            onClick={() => handleRemoveTechnology(tech)}
                             className="ml-1.5 inline-flex items-center justify-center h-4 w-4 rounded-full bg-indigo-200 text-indigo-600 hover:bg-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
                           >
                             <span className="sr-only">Remove tag</span>
@@ -534,7 +695,7 @@ const AdminRepositoriesPage = () => {
                 <div className="mt-6 flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={closeModal}
                     className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     Cancel
@@ -569,16 +730,16 @@ const AdminRepositoriesPage = () => {
                       <div className="flex justify-between items-start">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{repo.title}</h3>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          repo.accessType === 'free' ? 'bg-green-100 text-green-800' : 
-                          repo.accessType === 'premium' ? 'bg-yellow-100 text-yellow-800' : 
+                          repo.accessLevel === 'free' ? 'bg-green-100 text-green-800' : 
+                          repo.accessLevel === 'premium' ? 'bg-yellow-100 text-yellow-800' : 
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {repo.accessType.charAt(0).toUpperCase() + repo.accessType.slice(1)}
+                          {repo.accessLevel ? (repo.accessLevel.charAt(0).toUpperCase() + repo.accessLevel.slice(1)) : 'Unknown'}
                         </span>
                       </div>
                       <p className="text-gray-600 text-sm mb-4">{repo.description}</p>
                       <div className="flex justify-between space-x-2">
-                        <ActionButton accessType={repo.accessType} githubUrl={repo.githubUrl} />
+                        <ActionButton accessType={repo.accessLevel} githubUrl={repo.gitHubUrl} />
                         <button 
                           onClick={() => handleEdit(repo)}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition duration-200"
