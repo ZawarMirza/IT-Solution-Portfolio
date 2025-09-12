@@ -219,11 +219,11 @@ const AdminRepositoriesPage = () => {
       
       if (newRepo.id) {
         // Update existing repository
-        await api.put(`/api/Repositories/${newRepo.id}`, repoData);
+        await api.put(`/api/repositories/${newRepo.id}`, repoData);
         toast.success('Repository updated successfully!');
       } else {
         // Create new repository
-        await api.post('/api/Repositories', repoData);
+        await api.post('/api/repositories', repoData);
         toast.success('Repository created successfully!');
       }
       
@@ -262,10 +262,33 @@ const AdminRepositoriesPage = () => {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching repositories and domains...');
       const [reposResponse, domainsResponse] = await Promise.all([
-        api.get('/api/Repositories'),
-        api.get('/api/Domains')
+        api.get('/api/repositories').catch(err => {
+          console.error('Error fetching repositories:', {
+            url: err.config?.url,
+            method: err.config?.method,
+            status: err.response?.status,
+            statusText: err.response?.statusText,
+            data: err.response?.data,
+            headers: err.config?.headers
+          });
+          throw err;
+        }),
+        api.get('/api/domains').catch(err => {
+          console.error('Error fetching domains:', {
+            url: err.config?.url,
+            method: err.config?.method,
+            status: err.response?.status,
+            statusText: err.response?.statusText,
+            data: err.response?.data
+          });
+          throw err;
+        })
       ]);
+      
+      console.log('Repositories data:', reposResponse.data);
+      console.log('Domains data:', domainsResponse.data);
       
       setRepositories(reposResponse.data);
       setFilteredRepos(reposResponse.data);
@@ -273,9 +296,14 @@ const AdminRepositoriesPage = () => {
       setError(null);
       return reposResponse.data;
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setError('Failed to load data. Please try again later.');
-      toast.error('Failed to load repositories. Please refresh the page.');
+      console.error('Error in fetchData:', {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        response: err.response?.data
+      });
+      setError(`Failed to load data: ${err.message}`);
+      toast.error(`Failed to load repositories: ${err.response?.data?.message || err.message}`);
       throw err;
     } finally {
       setIsLoading(false);
@@ -290,8 +318,8 @@ const AdminRepositoriesPage = () => {
     const loadData = async () => {
       try {
         const [reposResponse, domainsResponse] = await Promise.all([
-          api.get('/api/Repositories', { signal }),
-          api.get('/api/Domains', { signal })
+          api.get('/api/repositories', { signal }),
+          api.get('/api/domains', { signal })
         ]);
         
         setRepositories(reposResponse.data);
@@ -352,7 +380,7 @@ const AdminRepositoriesPage = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this repository? This action cannot be undone.')) {
       try {
-        await api.delete(`/api/Repositories/${id}`);
+        await api.delete(`/api/repositories/${id}`);
         toast.success('Repository deleted successfully!');
         
         // Optimistic UI update

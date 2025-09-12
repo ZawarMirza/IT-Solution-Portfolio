@@ -1,24 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context';
-import axios from 'axios';
+import { Helmet } from 'react-helmet';
+import { FiDownload, FiSearch, FiFilter, FiCalendar, FiUser, FiTag, FiPlus } from 'react-icons/fi';
+import AddPublicationModal from '../../components/publications/AddPublicationModal';
 
 const UserPublicationsPage = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [publications, setPublications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('All');
+  const [sortBy, setSortBy] = useState('newest');
+  const [domains, setDomains] = useState(['All']);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Debug effect for modal state
+  useEffect(() => {
+    console.log('Modal state changed:', isAddModalOpen);
+  }, [isAddModalOpen]);
+  
+  const handleOpenModal = () => {
+    console.log('Opening modal');
+    setIsAddModalOpen(true);
+  };
+
+  // Fetch domains from API
+  useEffect(() => {
+    const fetchDomains = async () => {
+      try {
+        const response = await fetch('http://localhost:5119/api/domains');
+        if (!response.ok) {
+          throw new Error('Failed to fetch domains');
+        }
+        const data = await response.json();
+        setDomains(['All', ...data.map(domain => domain.name)]);
+      } catch (err) {
+        console.error('Error fetching domains:', err);
+        // Fallback to default domains if API fails
+        setDomains(['All', 'AI', 'Machine Learning', 'Cloud Computing', 'Blockchain', 'Cybersecurity', 'Data Science', 'IoT', 'Software Engineering']);
+      }
+    };
+
+    fetchDomains();
+  }, []);
 
   // Fetch publications from API
   useEffect(() => {
     const fetchPublications = async () => {
       try {
-        const response = await axios.get('http://localhost:5119/api/Publications');
+        const response = await fetch('http://localhost:5119/api/Publications');
+        if (!response.ok) {
+          throw new Error('Failed to fetch publications');
+        }
+        const data = await response.json();
         
-        // Transform API data to match frontend structure
-        const transformedPublications = response.data.map(pub => ({
+        // Transform API data to match our frontend structure
+        const transformedPublications = data.map(pub => ({
           id: pub.id,
           title: pub.title,
           authors: JSON.parse(pub.authors || '[]'),
@@ -29,134 +67,16 @@ const UserPublicationsPage = () => {
           videoPreview: pub.videoPreviewUrl,
           downloadUrl: pub.downloadUrl,
           publishedDate: pub.publishedDate,
-          downloads: pub.downloads,
+          downloads: pub.downloads || 0,
           keywords: JSON.parse(pub.keywords || '[]'),
           status: pub.status
         }));
 
-        // If no data from API, use fallback mock data
-        if (transformedPublications.length === 0) {
-          const mockPublications = [
-            {
-              id: 1,
-              title: 'Deep Learning Approaches for Natural Language Processing',
-              authors: ['Dr. Sarah Johnson', 'Prof. Michael Chen', 'Dr. Emily Rodriguez'],
-              domain: 'AI',
-              abstract: 'This paper presents novel deep learning architectures for natural language processing tasks, including sentiment analysis, named entity recognition, and machine translation. Our approach demonstrates significant improvements over existing state-of-the-art methods.',
-              thumbnail: '/images/papers/nlp-deep-learning.jpg',
-              documentPreview: '/docs/nlp-deep-learning-preview.pdf',
-              videoPreview: 'https://youtube.com/watch?v=example1',
-              downloadUrl: '/downloads/nlp-deep-learning.pdf',
-              publishedDate: '2023-10-15',
-              downloads: 1245,
-              keywords: ['deep learning', 'NLP', 'neural networks', 'transformers'],
-              status: 'published'
-            },
-            {
-              id: 2,
-            title: 'Scalable Cloud Architecture Patterns for Microservices',
-            authors: ['Dr. James Wilson', 'Prof. Lisa Zhang'],
-            domain: 'Cloud',
-            abstract: 'We explore scalable cloud architecture patterns specifically designed for microservices deployment. This research covers containerization strategies, service mesh implementations, and auto-scaling mechanisms in distributed systems.',
-            thumbnail: '/images/papers/cloud-microservices.jpg',
-            documentPreview: '/docs/cloud-microservices-preview.pdf',
-            videoPreview: null,
-            downloadUrl: '/downloads/cloud-microservices.pdf',
-            publishedDate: '2023-11-02',
-            downloads: 892,
-            keywords: ['cloud computing', 'microservices', 'scalability', 'containers'],
-            status: 'published'
-          },
-          {
-            id: 3,
-            title: 'Machine Learning Optimization Techniques for Edge Computing',
-            authors: ['Dr. Alex Kumar', 'Prof. Maria Santos', 'Dr. Robert Kim'],
-            domain: 'ML',
-            abstract: 'This study investigates optimization techniques for deploying machine learning models on edge devices. We present novel compression algorithms and quantization methods that maintain model accuracy while reducing computational requirements.',
-            thumbnail: '/images/papers/ml-edge-computing.jpg',
-            documentPreview: '/docs/ml-edge-computing-preview.pdf',
-            videoPreview: 'https://youtube.com/watch?v=example3',
-            downloadUrl: '/downloads/ml-edge-computing.pdf',
-            publishedDate: '2023-09-28',
-            downloads: 1567,
-            keywords: ['machine learning', 'edge computing', 'optimization', 'model compression'],
-            status: 'published'
-          },
-          {
-            id: 4,
-            title: 'Blockchain Security Protocols for Decentralized Applications',
-            authors: ['Dr. David Thompson', 'Prof. Anna Petrov'],
-            domain: 'Blockchain',
-            abstract: 'We propose new security protocols for decentralized applications built on blockchain technology. Our research addresses common vulnerabilities and presents cryptographic solutions for enhanced security in smart contracts.',
-            thumbnail: '/images/papers/blockchain-security.jpg',
-            documentPreview: '/docs/blockchain-security-preview.pdf',
-            videoPreview: null,
-            downloadUrl: '/downloads/blockchain-security.pdf',
-            publishedDate: '2023-12-05',
-            downloads: 723,
-            keywords: ['blockchain', 'security', 'smart contracts', 'cryptography'],
-            status: 'published'
-          },
-          {
-            id: 5,
-            title: 'Quantum Computing Applications in Cryptography',
-            authors: ['Prof. Catherine Lee', 'Dr. Mark Anderson'],
-            domain: 'Quantum',
-            abstract: 'This paper explores the implications of quantum computing on modern cryptographic systems. We analyze quantum algorithms for breaking traditional encryption and propose quantum-resistant cryptographic methods.',
-            thumbnail: '/images/papers/quantum-crypto.jpg',
-            documentPreview: '/docs/quantum-crypto-preview.pdf',
-            videoPreview: 'https://youtube.com/watch?v=example5',
-            downloadUrl: '/downloads/quantum-crypto.pdf',
-            publishedDate: '2023-08-20',
-            downloads: 2103,
-            keywords: ['quantum computing', 'cryptography', 'quantum algorithms', 'security'],
-            status: 'published'
-          },
-          {
-            id: 6,
-            title: 'IoT Data Analytics and Real-time Processing Frameworks',
-            authors: ['Dr. Jennifer Wu', 'Prof. Carlos Martinez', 'Dr. Ahmed Hassan'],
-            domain: 'IoT',
-            abstract: 'We present comprehensive frameworks for real-time processing and analytics of IoT data streams. Our approach includes novel algorithms for data fusion, anomaly detection, and predictive analytics in IoT environments.',
-            thumbnail: '/images/papers/iot-analytics.jpg',
-            documentPreview: '/docs/iot-analytics-preview.pdf',
-            videoPreview: null,
-            downloadUrl: '/downloads/iot-analytics.pdf',
-            publishedDate: '2023-07-12',
-            downloads: 1334,
-            keywords: ['IoT', 'data analytics', 'real-time processing', 'anomaly detection'],
-            status: 'published'
-          }
-        ];
-        
-          setPublications(mockPublications);
-        } else {
-          setPublications(transformedPublications);
-        }
-        
+        setPublications(transformedPublications);
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching publications:', err);
-        // Fallback to mock data on error
-        const mockPublications = [
-          {
-            id: 1,
-            title: 'Deep Learning Approaches for Natural Language Processing',
-            authors: ['Dr. Sarah Johnson', 'Prof. Michael Chen', 'Dr. Emily Rodriguez'],
-            domain: 'AI',
-            abstract: 'This paper presents novel deep learning architectures for natural language processing tasks, including sentiment analysis, named entity recognition, and machine translation. Our approach demonstrates significant improvements over existing state-of-the-art methods.',
-            thumbnail: '/images/papers/nlp-deep-learning.jpg',
-            documentPreview: '/docs/nlp-deep-learning-preview.pdf',
-            videoPreview: 'https://youtube.com/watch?v=example1',
-            downloadUrl: '/downloads/nlp-deep-learning.pdf',
-            publishedDate: '2023-10-15',
-            downloads: 1245,
-            keywords: ['deep learning', 'NLP', 'neural networks', 'transformers'],
-            status: 'published'
-          }
-        ];
-        setPublications(mockPublications);
-        setError('Using offline data. Backend connection failed.');
+        setError('Failed to load publications. Please try again later.');
         setIsLoading(false);
       }
     };
@@ -164,301 +84,314 @@ const UserPublicationsPage = () => {
     fetchPublications();
   }, []);
 
-  // Get unique domains for filter dropdown
-  const domains = ['All', ...new Set(publications.map(pub => pub.domain))];
+  // Filter and sort publications
+  const filteredPublications = useMemo(() => {
+    return publications
+      .filter(publication => {
+        if (searchTerm === '' && selectedDomain === 'All') return true;
+        
+        const matchesSearch = 
+          searchTerm === '' ||
+          publication.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          publication.authors.some(author => 
+            author.toLowerCase().includes(searchTerm.toLowerCase())
+          ) ||
+          publication.keywords.some(keyword => 
+            keyword.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+            
+        const matchesDomain = 
+          selectedDomain === 'All' || 
+          publication.domain === selectedDomain;
+          
+        return matchesSearch && matchesDomain;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'newest') {
+          return new Date(b.publishedDate) - new Date(a.publishedDate);
+        } else if (sortBy === 'popular') {
+          return b.downloads - a.downloads;
+        }
+        return 0;
+      });
+  }, [publications, searchTerm, selectedDomain, sortBy]);
 
-  // Filter and search publications
-  const filteredPublications = publications.filter(pub => {
-    const matchesSearch = 
-      pub.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pub.authors.some(author => author.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      pub.keywords.some(keyword => keyword.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      pub.abstract.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDomain = selectedDomain === 'All' || pub.domain === selectedDomain;
-    
-    return matchesSearch && matchesDomain;
-  });
+  // Handle add new publication
+  const handleAddPublication = async (formData) => {
+    try {
+      // Create FormData for file uploads
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('authors', JSON.stringify(formData.authors));
+      formDataToSend.append('domain', formData.domain);
+      formDataToSend.append('abstract', formData.abstract);
+      formDataToSend.append('keywords', JSON.stringify(formData.keywords));
+      formDataToSend.append('publishedDate', formData.publishedDate);
+      
+      if (formData.thumbnail) {
+        formDataToSend.append('thumbnail', formData.thumbnail);
+      }
+      if (formData.document) {
+        formDataToSend.append('document', formData.document);
+      }
+      if (formData.video) {
+        formDataToSend.append('video', formData.video);
+      }
 
+      const response = await fetch('http://localhost:5119/api/Publications', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to add publication');
+      }
+      
+      // Refresh the publications list
+      const newPublication = await response.json();
+      const transformedPublication = {
+        ...newPublication,
+        authors: JSON.parse(newPublication.authors || '[]'),
+        keywords: JSON.parse(newPublication.keywords || '[]')
+      };
+      
+      // Add the new publication to the list
+      setPublications(prev => [transformedPublication, ...prev]);
+      
+      // Close the modal
+      setIsAddModalOpen(false);
+      return true;
+    } catch (error) {
+      console.error('Error adding publication:', error);
+      throw error;
+    }
+  };
+
+  // Handle download
   const handleDownload = async (publication) => {
-    if (!isAuthenticated()) {
-      alert('Please login to download publications.');
+    if (!isAuthenticated) {
+      // Redirect to login or show login modal
       return;
     }
     
     try {
-      // Increment download count via API
-      await axios.post(`http://localhost:5119/api/Publications/${publication.id}/download`, {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      // Increment download count
+      await fetch(`http://localhost:5119/api/Publications/${publication.id}/download`, {
+        method: 'PUT'
       });
       
       // Update local state
       setPublications(publications.map(pub => 
         pub.id === publication.id 
-          ? { ...pub, downloads: pub.downloads + 1 }
+          ? { ...pub, downloads: (pub.downloads || 0) + 1 } 
           : pub
       ));
       
-      // Open download
-      if (publication.downloadUrl) {
-        window.open(publication.downloadUrl, '_blank');
-      }
-    } catch (err) {
-      console.error('Error tracking download:', err);
-      // Still allow download even if tracking fails
-      if (publication.downloadUrl) {
-        window.open(publication.downloadUrl, '_blank');
-      }
-    }
-  };
-
-  const handlePreview = (previewUrl, type = 'document') => {
-    if (previewUrl) {
-      window.open(previewUrl, '_blank');
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const statusClasses = {
-      published: 'bg-green-100 text-green-800',
-      draft: 'bg-yellow-100 text-yellow-800',
-      archived: 'bg-gray-100 text-gray-800',
-    };
-    
-    return (
-      <span className={`px-2 text-xs font-semibold rounded-full ${statusClasses[status] || 'bg-gray-100'}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </span>
-    );
-  };
-
-  const deletePublication = async (id) => {
-    if (window.confirm('Are you sure you want to delete this publication?')) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setPublications(publications.filter(pub => pub.id !== id));
-      } catch (err) {
-        console.error('Error deleting publication:', err);
-        setError('Failed to delete publication.');
-      }
+      // Trigger download
+      window.open(publication.downloadUrl, '_blank');
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download. Please try again.');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          <p className="mt-2 text-gray-600">Loading publications...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            Try Again
-          </button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl font-bold text-gray-900">Research & Publications</h1>
-            <p className="text-gray-500">Explore and download research papers from various domains</p>
-          </div>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <Helmet>
+        <title>Research Publications - Wordpress Portfolio</title>
+        <meta name="description" content="Browse our collection of research publications in various domains including AI, Machine Learning, Cloud Computing, and more." />
+      </Helmet>
 
-        {/* Search and Filter Controls */}
-        <div className="mb-6 flex flex-wrap gap-4">
-          <div className="relative flex-1 min-w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search by title, author, or keyword..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {/* Header with Add Button */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Research Publications</h1>
+          <p className="mt-1 text-gray-600">Browse and manage research publications</p>
+        </div>
+        <button
+          onClick={handleOpenModal}
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <FiPlus className="mr-2 h-4 w-4" />
+          Add New Publication
+        </button>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="mb-8 flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Search by title, author, or keyword..."
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <FiSearch className="absolute right-3 top-3.5 text-gray-400" />
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative">
+            <select
+              value={selectedDomain}
+              onChange={(e) => setSelectedDomain(e.target.value)}
+              className="appearance-none bg-white border rounded-lg px-4 py-3 pr-8 focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            >
+              {domains.map(domain => (
+                <option key={domain} value={domain}>
+                  {domain === 'All' ? 'All Domains' : domain}
+                </option>
+              ))}
+            </select>
+            <FiFilter className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" />
           </div>
           
           <select
-            value={selectedDomain}
-            onChange={(e) => setSelectedDomain(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-white border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
           >
-            {domains.map(domain => (
-              <option key={domain} value={domain}>
-                {domain === 'All' ? 'All Domains' : domain}
-              </option>
-            ))}
+            <option value="newest">Newest First</option>
+            <option value="popular">Most Popular</option>
           </select>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredPublications.length > 0 ? (
-            filteredPublications.map((pub) => (
-              <div key={pub.id} className="bg-white shadow rounded-lg overflow-hidden hover:shadow-lg transition duration-200">
-                {/* Thumbnail */}
-                <div className="h-48 bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
-                  {pub.thumbnail ? (
-                    <img 
-                      src={pub.thumbnail} 
-                      alt={pub.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <div className="text-white text-center p-4">
-                    <svg className="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                    </svg>
-                    <p className="text-sm font-medium">{pub.domain}</p>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  {/* Title and Domain */}
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{pub.title}</h3>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 ml-2">
-                      {pub.domain}
-                    </span>
-                  </div>
-
-                  {/* Authors */}
-                  <div className="mb-3">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Authors:</span> {pub.authors.join(', ')}
-                    </p>
-                  </div>
-
-                  {/* Abstract */}
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-700 line-clamp-3">{pub.abstract}</p>
-                  </div>
-
-                  {/* Keywords */}
-                  <div className="mb-4">
-                    <div className="flex flex-wrap gap-1">
-                      {pub.keywords.slice(0, 4).map((keyword, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
-                        >
-                          {keyword}
-                        </span>
-                      ))}
-                      {pub.keywords.length > 4 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                          +{pub.keywords.length - 4} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Publication Info */}
-                  <div className="mb-4 flex items-center text-sm text-gray-500">
-                    <span>Published: {new Date(pub.publishedDate).toLocaleDateString()}</span>
-                    <span className="mx-2">•</span>
-                    <span>{pub.downloads} downloads</span>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handlePreview(pub.documentPreview, 'document')}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Preview
-                    </button>
-
-                    {pub.videoPreview && (
-                      <button
-                        onClick={() => handlePreview(pub.videoPreview, 'video')}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v4a2 2 0 002 2h2a2 2 0 002-2v-4M9 10V9a2 2 0 012-2h2a2 2 0 012 2v1" />
-                        </svg>
-                        Video
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleDownload(pub)}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-4-4m4 4l4-4m-4-4V3" />
-                      </svg>
-                      Download
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-        ) : (
-          <div className="col-span-full text-center p-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No publications found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || selectedDomain !== 'All' 
-                ? 'Try adjusting your search or filter criteria.' 
-                : 'No research publications are currently available.'}
-            </p>
-            {(searchTerm || selectedDomain !== 'All') && (
-              <div className="mt-4">
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedDomain('All');
-                  }}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
+      
+      {/* Publications Grid */}
+      {filteredPublications.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPublications.map(publication => (
+            <div key={publication.id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-200 flex flex-col h-full">
+              {publication.thumbnail && (
+                <div className="h-48 bg-gray-100 overflow-hidden">
+                  <img 
+                    src={publication.thumbnail} 
+                    alt={publication.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = '/images/placeholder-paper.jpg';
+                    }}
+                  />
+                </div>
+              )}
+              
+              <div className="p-6 flex flex-col flex-grow">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    {publication.domain}
+                  </span>
+                  <span className="text-sm text-gray-500 flex items-center">
+                    <FiCalendar className="mr-1" />
+                    {new Date(publication.publishedDate).toLocaleDateString()}
+                  </span>
+                </div>
+                
+                <h2 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2" title={publication.title}>
+                  {publication.title}
+                </h2>
+                
+                <div className="flex items-center text-sm text-gray-600 mb-3">
+                  <FiUser className="mr-1 flex-shrink-0" />
+                  <span className="line-clamp-1" title={publication.authors.join(', ')}>
+                    {publication.authors.join(', ')}
+                  </span>
+                </div>
+                
+                <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+                  {publication.abstract}
+                </p>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {publication.keywords.slice(0, 3).map((keyword, index) => (
+                    <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <FiTag className="mr-1" size={10} />
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+                
+                <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
+                  <span className="text-sm text-gray-500">
+                    {publication.downloads} {publication.downloads === 1 ? 'download' : 'downloads'}
+                  </span>
+                  
+                  <button
+                    onClick={() => handleDownload(publication)}
+                    disabled={!isAuthenticated}
+                    className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                      isAuthenticated 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-gray-400 cursor-not-allowed'
+                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200`}
+                    title={!isAuthenticated ? 'Please login to download' : ''}
+                  >
+                    <FiDownload className="mr-2" />
+                    {isAuthenticated ? 'Download' : 'Login to Download'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No publications found</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchTerm || selectedDomain !== 'All' 
+              ? 'Try adjusting your search or filter criteria.'
+              : 'No publications available at the moment. Please check back later.'}
+          </p>
+          {(searchTerm || selectedDomain !== 'All') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedDomain('All');
+              }}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+      
+      {/* Add Publication Modal */}
+      <AddPublicationModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleAddPublication}
+        domains={domains.filter(d => d !== 'All')}
+      />
     </div>
-  </div>
-);
+  );
 };
 
 export default UserPublicationsPage;
