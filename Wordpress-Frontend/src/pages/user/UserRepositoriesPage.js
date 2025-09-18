@@ -676,6 +676,14 @@ const UserRepositoriesPage = () => {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="ml-2 p-1 border rounded"
+            >
+              <option value="">All Categories</option>
               {categories.map((category) => (
                 <option key={category} value={category}>
                   {category}
