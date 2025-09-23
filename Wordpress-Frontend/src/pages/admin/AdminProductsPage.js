@@ -3,7 +3,8 @@ import axios from 'axios';
 
 const AdminProductsPage = () => {
     const [products, setProducts] = useState([]);
-    const [newProduct, setNewProduct] = useState({ title: '', caption: '', image: '', domainId: 0 });
+    const [newProduct, setNewProduct] = useState({ title: '', caption: '', image: null, domainId: 0 });
+    const [imagePreview, setImagePreview] = useState('');
     const [editingProduct, setEditingProduct] = useState(null);
     const [domains, setDomains] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -35,13 +36,25 @@ const AdminProductsPage = () => {
     }, []);
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewProduct(prev => ({ ...prev, [name]: value }));
+        const { name, value, files } = e.target;
+        if (name === 'image' && files && files[0]) {
+            const file = files[0];
+            setNewProduct(prev => ({ ...prev, image: file }));
+            
+            // Create image preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setNewProduct(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleAddOrUpdateProduct = async (e) => {
         e.preventDefault();
-        if (!newProduct.title.trim() || !newProduct.caption.trim() || !newProduct.image.trim() || newProduct.domainId === 0) {
+        if (!newProduct.title.trim() || !newProduct.caption.trim() || !newProduct.image || newProduct.domainId === 0) {
             setError('All fields are required');
             setLoading(false);
             return;
@@ -56,23 +69,35 @@ const AdminProductsPage = () => {
                 setLoading(false);
                 return;
             }
-            const productData = {
-                ...newProduct,
-                domain: selectedDomain.name,
-                id: editingProduct ? editingProduct.id : 0 // Ensure ID matches for updates
-            };
+            const formData = new FormData();
+            formData.append('title', newProduct.title);
+            formData.append('caption', newProduct.caption);
+            formData.append('domainId', newProduct.domainId);
+            formData.append('domain', selectedDomain.name);
+            if (newProduct.image) {
+                formData.append('image', newProduct.image);
+            }
             
             if (editingProduct) {
                 // Update existing product
-                const response = await axios.put(`http://localhost:5119/api/products/${editingProduct.id}`, productData);
+                const response = await axios.put(`http://localhost:5119/api/products/${editingProduct.id}`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
                 setProducts(products.map(product => product.id === editingProduct.id ? response.data : product));
                 setEditingProduct(null);
             } else {
                 // Create new product
-                const response = await axios.post('http://localhost:5119/api/products', productData);
+                const response = await axios.post('http://localhost:5119/api/products', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
                 setProducts([...products, response.data]);
             }
-            setNewProduct({ title: '', caption: '', image: '', domainId: 0 });
+            setNewProduct({ title: '', caption: '', image: null, domainId: 0 });
+            setImagePreview('');
         } catch (err) {
             console.error('Error saving product:', err);
             console.error('Error details:', err.response?.data);
@@ -84,7 +109,15 @@ const AdminProductsPage = () => {
     };
 
     const handleEditProduct = (product) => {
-        setNewProduct({ title: product.title, caption: product.caption, image: product.image, domainId: product.domainId });
+        setNewProduct({ 
+            title: product.title, 
+            caption: product.caption, 
+            image: product.image, // This will be the image URL for existing products
+            domainId: product.domainId 
+        });
+        if (product.image) {
+            setImagePreview(product.image);
+        }
         setEditingProduct(product);
     };
 
@@ -146,14 +179,24 @@ const AdminProductsPage = () => {
                         <div>
                             <label className="block text-gray-700 dark:text-gray-300 mb-2" htmlFor="image">Image URL</label>
                             <input 
-                                type="url" 
+                                type="file" 
                                 id="image" 
                                 name="image" 
-                                value={newProduct.image} 
+                                accept="image/*"
                                 onChange={handleInputChange} 
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 dark:bg-gray-700 dark:text-white" 
-                                required 
+                                required={!editingProduct}
                             />
+                            {imagePreview || (editingProduct && newProduct.image) ? (
+                                <div className="mt-2">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Preview:</p>
+                                    <img 
+                                        src={imagePreview || newProduct.image} 
+                                        alt="Preview" 
+                                        className="h-20 w-20 object-cover rounded"
+                                    />
+                                </div>
+                            ) : null}
                         </div>
                         <div>
                             <label className="block text-gray-700 dark:text-gray-300 mb-2" htmlFor="domainId">Domain/Category</label>
@@ -181,7 +224,11 @@ const AdminProductsPage = () => {
                     {editingProduct && (
                         <button 
                             type="button" 
-                            onClick={() => { setEditingProduct(null); setNewProduct({ title: '', caption: '', image: '', domainId: 0 }); }} 
+                            onClick={() => { 
+                                setEditingProduct(null); 
+                                setNewProduct({ title: '', caption: '', image: null, domainId: 0 });
+                                setImagePreview('');
+                            }} 
                             className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg ml-2 transition duration-300"
                         >
                             Cancel Edit
