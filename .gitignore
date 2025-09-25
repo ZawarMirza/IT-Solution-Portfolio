@@ -1,0 +1,90 @@
+# Root .gitignore for combined React (frontend) + ASP.NET Core (backend)
+
+# =====================
+# Node / React
+# =====================
+node_modules/
+.npm/
+.pnp/
+.pnp.cjs
+.pnpm-store/
+
+# Build outputs
+build/
+dist/
+.cache/
+coverage/
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Misc
+.DS_Store
+*.swp
+.eslintcache
+
+# Editors/IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.iml
+
+# =====================
+# ASP.NET Core / .NET
+# =====================
+**/bin/
+**/obj/
+**/TestResults/
+*.user
+*.userprefs
+*.suo
+*.cache
+*.mdb
+*.opendb
+*.VC.db
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# Entity Framework / SQLite local DBs
+Wordpress-Backend/*.db
+Wordpress-Backend/*.db-wal
+Wordpress-Backend/*.db-shm
+
+# Rider / VS
+*.pidb
+*.svclog
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# =====================
+# OS Files
+# =====================
+Thumbs.db
+ehthumbs.db
+Icon?
+
+# =====================
+# App specific
+# =====================
+# If you keep any local secrets or configs:
+secrets.json
