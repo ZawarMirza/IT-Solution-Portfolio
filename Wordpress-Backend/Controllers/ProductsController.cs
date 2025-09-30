@@ -2,7 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductAPI.Data;
 using ProductAPI.Models;
+using ProductAPI.Models.DTOs;
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ProductAPI.Controllers
 {
@@ -11,10 +16,12 @@ namespace ProductAPI.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ProductDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public ProductsController(ProductDbContext context)
+        public ProductsController(ProductDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         [HttpGet]
@@ -91,25 +98,115 @@ namespace ProductAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Product>> Create(Product product)
+        [Authorize(Roles = "Admin")]
+        [Consumes("multipart/form-data", "application/x-www-form-urlencoded", "application/json")]
+        public async Task<ActionResult<Product>> Create([FromForm] ProductCreateDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            // Validate domain exists
+            var domainExists = await _context.Domains.AnyAsync(d => d.Id == dto.DomainId);
+            if (!domainExists)
+            {
+                return BadRequest(new { message = "Invalid DomainId" });
+            }
+
+            // Map DTO to entity
+            var product = new Product
+            {
+                Title = dto.Title,
+                Caption = dto.Caption,
+                DomainId = dto.DomainId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Assign creator from token
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId))
+            {
+                product.CreatedById = userId;
+            }
+            else
+            {
+                // Fallback to first available user to satisfy FK (prevents 500s during unauthenticated seeding/testing)
+                var firstUser = await _context.Users.FirstOrDefaultAsync();
+                if (firstUser != null)
+                {
+                    product.CreatedById = firstUser.Id;
+                }
+            }
+
+            // Handle optional image upload
+            if (dto.Image != null && dto.Image.Length > 0)
+            {
+                var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
+                Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"product_{Guid.NewGuid():N}{Path.GetExtension(dto.Image.FileName)}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+                using (var stream = System.IO.File.Create(filePath))
+                {
+                    await dto.Image.CopyToAsync(stream);
+                }
+                product.Image = $"/uploads/{fileName}";
+            }
+
             _context.Products.Add(product);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to save product", detail = ex.Message });
+            }
 
             return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, Product updated)
+        [Authorize(Roles = "Admin")]
+        [Consumes("multipart/form-data", "application/x-www-form-urlencoded", "application/json")]
+        public async Task<IActionResult> Update(int id, [FromForm] ProductCreateDto dto)
         {
-            if (id != updated.Id) return BadRequest();
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
 
-            _context.Entry(updated).State = EntityState.Modified;
+            // Validate domain exists
+            var domainExists = await _context.Domains.AnyAsync(d => d.Id == dto.DomainId);
+            if (!domainExists)
+            {
+                return BadRequest(new { message = "Invalid DomainId" });
+            }
+
+            product.Title = dto.Title;
+            product.Caption = dto.Caption;
+            product.DomainId = dto.DomainId;
+
+            // Handle optional new image
+            if (dto.Image != null && dto.Image.Length > 0)
+            {
+                var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
+                Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"product_{Guid.NewGuid():N}{Path.GetExtension(dto.Image.FileName)}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+                using (var stream = System.IO.File.Create(filePath))
+                {
+                    await dto.Image.CopyToAsync(stream);
+                }
+                product.Image = $"/uploads/{fileName}";
+            }
 
             try
             {
                 await _context.SaveChangesAsync();
-                return Ok(updated);
+                return Ok(product);
             }
             catch (DbUpdateConcurrencyException)
             {

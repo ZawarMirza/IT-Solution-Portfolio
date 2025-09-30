@@ -22,7 +22,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Dashboard & Protected Pages
-import DashboardPage from './pages/DashboardPage';
+
 
 // Admin Pages
 import AdminUsersPage from './pages/admin/AdminUsersPage';
@@ -35,7 +35,6 @@ import AdminPublicationsPage from './pages/admin/AdminPublicationsPage';
 import AdminRepositoriesPage from './pages/admin/AdminRepositoriesPage';
 
 // Dashboard Components
-import AdminDashboard from './pages/dashboard/AdminDashboard';
 import UserDashboard from './pages/dashboard/UserDashboard';
 
 // Role-based redirect component

@@ -3,7 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProductAPI.Data;
 using Wordpress_Backend.Models;
+using Wordpress_Backend.Models.DTOs;
 using System.Text.Json;
+using System.Security.Claims;
+using System.IO;
 
 namespace Wordpress_Backend.Controllers
 {
@@ -12,10 +15,12 @@ namespace Wordpress_Backend.Controllers
     public class PublicationsController : ControllerBase
     {
         private readonly ProductDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public PublicationsController(ProductDbContext context)
+        public PublicationsController(ProductDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // GET: api/Publications
@@ -132,6 +137,72 @@ namespace Wordpress_Backend.Controllers
                 .ToListAsync();
 
             return Ok(domains);
+        }
+
+        // POST: api/Publications/{id}/files
+        [HttpPost("{id}/files")]
+        [Authorize(Roles = "Admin")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadFiles(int id, [FromForm] PublicationFilesDto files)
+        {
+            var publication = await _context.Publications.FindAsync(id);
+            if (publication == null)
+            {
+                return NotFound();
+            }
+
+            var baseUploads = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "publications");
+            Directory.CreateDirectory(baseUploads);
+
+            // Thumbnail
+            if (files.Thumbnail != null && files.Thumbnail.Length > 0)
+            {
+                var thumbName = $"pub_{id}_thumb_{Guid.NewGuid():N}{Path.GetExtension(files.Thumbnail.FileName)}";
+                var thumbPath = Path.Combine(baseUploads, thumbName);
+                using (var stream = System.IO.File.Create(thumbPath))
+                {
+                    await files.Thumbnail.CopyToAsync(stream);
+                }
+                publication.ThumbnailUrl = $"/uploads/publications/{thumbName}";
+            }
+
+            // Document (PDF)
+            if (files.Document != null && files.Document.Length > 0)
+            {
+                var docName = $"pub_{id}_doc_{Guid.NewGuid():N}{Path.GetExtension(files.Document.FileName)}";
+                var docPath = Path.Combine(baseUploads, docName);
+                using (var stream = System.IO.File.Create(docPath))
+                {
+                    await files.Document.CopyToAsync(stream);
+                }
+                // Use DocumentPreviewUrl for preview and DownloadUrl for actual download
+                publication.DocumentPreviewUrl = $"/uploads/publications/{docName}";
+                publication.DownloadUrl = $"/uploads/publications/{docName}";
+            }
+
+            // Video
+            if (files.Video != null && files.Video.Length > 0)
+            {
+                var videoName = $"pub_{id}_video_{Guid.NewGuid():N}{Path.GetExtension(files.Video.FileName)}";
+                var videoPath = Path.Combine(baseUploads, videoName);
+                using (var stream = System.IO.File.Create(videoPath))
+                {
+                    await files.Video.CopyToAsync(stream);
+                }
+                publication.VideoPreviewUrl = $"/uploads/publications/{videoName}";
+            }
+
+            publication.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                publication.Id,
+                publication.ThumbnailUrl,
+                publication.DocumentPreviewUrl,
+                publication.VideoPreviewUrl,
+                publication.DownloadUrl
+            });
         }
 
         private bool PublicationExists(int id)

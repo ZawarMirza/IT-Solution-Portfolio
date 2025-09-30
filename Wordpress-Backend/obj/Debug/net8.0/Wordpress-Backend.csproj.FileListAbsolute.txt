@@ -196,3 +196,4 @@
 /home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/obj/Debug/net8.0/Wordpress-Backend.pdb
 /home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/obj/Debug/net8.0/Wordpress-Backend.genruntimeconfig.cache
 /home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/obj/Debug/net8.0/ref/Wordpress-Backend.dll
+/home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/bin/Debug/net8.0/Wordpress-Backend.staticwebassets.runtime.json
