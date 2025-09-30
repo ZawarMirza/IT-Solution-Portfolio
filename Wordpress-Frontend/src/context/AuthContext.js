@@ -100,12 +100,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (credentials) => {
     try {
       setError(null);
-      // Only send email and password to the backend
-      const { email, password } = credentials;
-      const response = await axios.post('http://localhost:5119/api/auth/login', {
-        email,
-        password
-      });
+      const response = await axios.post('http://localhost:5119/api/auth/login', credentials);
       
       const { token: authToken, refreshToken: newRefreshToken, user: userData } = response.data;
       

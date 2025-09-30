@@ -99,17 +99,27 @@ app.UseStaticFiles();
 app.UseCors("AllowReact");
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
 
-// Initialize the database and create default admin/user accounts
+// Initialize the database
 using (var scope = app.Services.CreateScope())
 {
+    var services = scope.ServiceProvider;
     try
     {
-        await DbInitializer.Initialize(scope.ServiceProvider);
+        var context = services.GetRequiredService<ProductDbContext>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        
+        // Apply pending migrations
+        await context.Database.MigrateAsync();
+        
+        // Seed the database
+        await DbInitializer.Initialize(services);
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while initializing the database.");
         // Don't throw the exception to prevent server crash
     }
