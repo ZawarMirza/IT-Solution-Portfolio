@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 
 const AdminProductsPage = () => {
     const [products, setProducts] = useState([]);
@@ -19,8 +19,8 @@ const AdminProductsPage = () => {
 
                 // Fetch products and domains
                 const [productsResponse, domainsResponse] = await Promise.all([
-                    axios.get('http://localhost:5119/api/products'),
-                    axios.get('http://localhost:5119/api/domains')
+                    api.get('/products'),
+                    api.get('/domains')
                 ]);
                 setProducts(productsResponse.data);
                 setDomains(domainsResponse.data);
@@ -80,20 +80,12 @@ const AdminProductsPage = () => {
             
             if (editingProduct) {
                 // Update existing product
-                const response = await axios.put(`http://localhost:5119/api/products/${editingProduct.id}`, formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
+                const response = await api.put(`/products/${editingProduct.id}`, formData);
                 setProducts(products.map(product => product.id === editingProduct.id ? response.data : product));
                 setEditingProduct(null);
             } else {
                 // Create new product
-                const response = await axios.post('http://localhost:5119/api/products', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
+                const response = await api.post('/products', formData);
                 setProducts([...products, response.data]);
             }
             setNewProduct({ title: '', caption: '', image: null, domainId: 0 });
@@ -125,7 +117,7 @@ const AdminProductsPage = () => {
         if (window.confirm('Are you sure you want to delete this product?')) {
             setLoading(true);
             try {
-                await axios.delete(`http://localhost:5119/api/products/${id}`);
+                await api.delete(`/products/${id}`);
                 setProducts(products.filter(product => product.id !== id));
             } catch (err) {
                 console.error('Error deleting product:', err);

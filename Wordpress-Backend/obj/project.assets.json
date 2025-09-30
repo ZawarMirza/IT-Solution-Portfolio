@@ -5420,19 +5420,19 @@
     ]
   },
   "packageFolders": {
-    "/home/farasat-ali/.nuget/packages/": {}
+    "C:\\Users\\Zawar\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/Wordpress-Backend.csproj",
+      "projectUniqueName": "C:\\Users\\Zawar\\Desktop\\IT-Solution-Portfolio\\IT-Solution-Portfolio\\Wordpress-Backend\\Wordpress-Backend.csproj",
       "projectName": "Wordpress-Backend",
-      "projectPath": "/home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/Wordpress-Backend.csproj",
-      "packagesPath": "/home/farasat-ali/.nuget/packages/",
-      "outputPath": "/home/farasat-ali/Documents/IT-Solution-Portfolio/Wordpress-Backend/obj/",
+      "projectPath": "C:\\Users\\Zawar\\Desktop\\IT-Solution-Portfolio\\IT-Solution-Portfolio\\Wordpress-Backend\\Wordpress-Backend.csproj",
+      "packagesPath": "C:\\Users\\Zawar\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Zawar\\Desktop\\IT-Solution-Portfolio\\IT-Solution-Portfolio\\Wordpress-Backend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/farasat-ali/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Zawar\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -5511,7 +5511,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/home/farasat-ali/.dotnet/sdk/8.0.412/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.414/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
