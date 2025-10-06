@@ -88,3 +88,10 @@ Icon?
 # =====================
 # If you keep any local secrets or configs:
 secrets.json
+
+# Ignore build artifacts
+bin/
+obj/
+*.dll
+*.exe
+
