@@ -21,9 +21,6 @@ import EmailVerificationPage from './pages/auth/EmailVerificationPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
-// Dashboard & Protected Pages
-import DashboardPage from './pages/DashboardPage';
-
 // Admin Pages
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminContentPage from './pages/admin/AdminContentPage';
@@ -35,7 +32,6 @@ import AdminPublicationsPage from './pages/admin/AdminPublicationsPage';
 import AdminRepositoriesPage from './pages/admin/AdminRepositoriesPage';
 
 // Dashboard Components
-import AdminDashboard from './pages/dashboard/AdminDashboard';
 import UserDashboard from './pages/dashboard/UserDashboard';
 
 // Role-based redirect component
@@ -61,7 +57,8 @@ import './index.css';
 const MainLayout = ({ children }) => (
   <div className="min-h-screen bg-gray-50 flex flex-col">
     <Navigation />
-    <main className="container mx-auto px-4 py-8 flex-grow">
+    {/* ✅ Removed padding and container spacing */}
+    <main className="w-full flex-grow">
       {children}
     </main>
     <Footer />
@@ -71,8 +68,9 @@ const MainLayout = ({ children }) => (
 const AuthLayout = ({ children }) => (
   <div className="min-h-screen bg-gray-50 flex flex-col">
     <div className="bg-white shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between h-16 items-center">
+      {/* ✅ Removed container padding */}
+      <div className="w-full px-0">
+        <div className="flex justify-between h-16 items-center px-4 sm:px-6 lg:px-8">
           <Link to="/" className="text-xl font-bold text-indigo-600 hover:text-indigo-800">
             Your Logo
           </Link>
