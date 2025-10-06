@@ -52,7 +52,7 @@ function ProductsPage() {
             id: product.id,
             title: product.title,
             caption: product.caption,
-            image: product.image
+            image: product.image.startsWith('http') ? product.image : `http://localhost:5119${product.image}`
           });
         });
         
@@ -113,7 +113,7 @@ function ProductsPage() {
     <div className="bg-gray-100 dark:bg-gray-900 transition-colors duration-300 min-h-screen">
       {/* Hero Section */}
       <div className="relative h-80 bg-indigo-700 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900 via-indigo-800 to-transparent mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/50 via-indigo-800/30 to-transparent"></div>
         <div className="absolute inset-0 opacity-30">
           <img 
             src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" 
