@@ -125,7 +125,7 @@ function App() {
           <Route element={<AuthLayout><Outlet /></AuthLayout>}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<SignupPage />} />
-            <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
+            <Route path="/verify-email" element={<EmailVerificationPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           </Route>

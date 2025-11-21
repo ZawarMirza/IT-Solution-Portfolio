@@ -34,7 +34,12 @@ namespace ProductAPI.Data
                     }
                 }
 
-                // Create default admin user if it doesn't exist
+                // Create super admin user if it doesn't exist
+                // NOTE: When you run the application, this super admin will be created automatically
+                // Super Admin Credentials:
+                // Email: admin@example.com
+                // Password: Admin@123
+                // IMPORTANT: Change this password in production!
                 string adminEmail = "admin@example.com";
                 string adminPassword = "Admin@123";
 
@@ -56,6 +61,33 @@ namespace ProductAPI.Data
                     if (result.Succeeded)
                     {
                         await userManager.AddToRoleAsync(adminUser, "Admin");
+                        
+                        // Display super admin credentials in terminal using Console.WriteLine for visibility
+                        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                        Console.WriteLine("");
+                        Console.WriteLine("==========================================");
+                        Console.WriteLine("SUPER ADMIN CREATED SUCCESSFULLY!");
+                        Console.WriteLine("==========================================");
+                        Console.WriteLine($"Email: {adminEmail}");
+                        Console.WriteLine($"Password: {adminPassword}");
+                        Console.WriteLine("Role: Admin");
+                        Console.WriteLine("==========================================");
+                        Console.WriteLine("⚠️  IMPORTANT: Change this password in production!");
+                        Console.WriteLine("==========================================");
+                        Console.WriteLine("");
+                        
+                        // Also log using logger
+                        logger.LogInformation("");
+                        logger.LogInformation("==========================================");
+                        logger.LogInformation("SUPER ADMIN CREATED SUCCESSFULLY!");
+                        logger.LogInformation("==========================================");
+                        logger.LogInformation("Email: {Email}", adminEmail);
+                        logger.LogInformation("Password: {Password}", adminPassword);
+                        logger.LogInformation("Role: Admin");
+                        logger.LogInformation("==========================================");
+                        logger.LogInformation("⚠️  IMPORTANT: Change this password in production!");
+                        logger.LogInformation("==========================================");
+                        logger.LogInformation("");
                     }
                     else
                     {
@@ -64,37 +96,40 @@ namespace ProductAPI.Data
                         throw new Exception($"Failed to create admin user: {errors}");
                     }
                 }
-
-                // Create default regular user if it doesn't exist
-                string userEmail = "user@example.com";
-                string userPassword = "User@123";
-
-                var regularUser = await userManager.FindByEmailAsync(userEmail);
-                if (regularUser == null)
+                else
                 {
-                    regularUser = new ApplicationUser
-                    {
-                        UserName = userEmail,
-                        Email = userEmail,
-                        FirstName = "Regular",
-                        LastName = "User",
-                        EmailConfirmed = true,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-
-                    var result = await userManager.CreateAsync(regularUser, userPassword);
-                    if (result.Succeeded)
-                    {
-                        await userManager.AddToRoleAsync(regularUser, "User");
-                    }
-                    else
-                    {
-                        // Log the errors if user creation fails
-                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                        throw new Exception($"Failed to create regular user: {errors}");
-                    }
+                    // Display existing super admin credentials
+                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                    Console.WriteLine("");
+                    Console.WriteLine("==========================================");
+                    Console.WriteLine("SUPER ADMIN CREDENTIALS");
+                    Console.WriteLine("==========================================");
+                    Console.WriteLine($"Email: {adminEmail}");
+                    Console.WriteLine($"Password: {adminPassword}");
+                    Console.WriteLine("Role: Admin");
+                    Console.WriteLine("Status: Already exists");
+                    Console.WriteLine("==========================================");
+                    Console.WriteLine("⚠️  IMPORTANT: Change this password in production!");
+                    Console.WriteLine("==========================================");
+                    Console.WriteLine("");
+                    
+                    // Also log using logger
+                    logger.LogInformation("");
+                    logger.LogInformation("==========================================");
+                    logger.LogInformation("SUPER ADMIN CREDENTIALS");
+                    logger.LogInformation("==========================================");
+                    logger.LogInformation("Email: {Email}", adminEmail);
+                    logger.LogInformation("Password: {Password}", adminPassword);
+                    logger.LogInformation("Role: Admin");
+                    logger.LogInformation("Status: Already exists");
+                    logger.LogInformation("==========================================");
+                    logger.LogInformation("⚠️  IMPORTANT: Change this password in production!");
+                    logger.LogInformation("==========================================");
+                    logger.LogInformation("");
                 }
+
+                // Note: Regular users are created through the registration flow with email verification
+                // No default user is created - users must register and verify their email
             }
             catch (Exception ex)
             {

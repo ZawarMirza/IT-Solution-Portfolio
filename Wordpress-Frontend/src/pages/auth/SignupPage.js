@@ -116,7 +116,7 @@ const SignupPage = () => {
     setIsLoading(true);
     
     try {
-      await register({
+      const response = await register({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -124,12 +124,23 @@ const SignupPage = () => {
         role: formData.role
       });
       
-      // Redirect to email verification page or show success message
-      navigate('/login', { 
-        state: { 
-          message: 'Registration successful! Please check your email to verify your account.' 
-        } 
-      });
+      // Check if email verification is required
+      if (response?.requiresVerification) {
+        // Show success message and redirect to login
+        navigate('/login', { 
+          state: { 
+            message: 'Registration successful! Please check your email to verify your account before logging in.',
+            email: response.email
+          } 
+        });
+      } else {
+        // Legacy flow or auto-login (shouldn't happen with new flow)
+        navigate('/login', { 
+          state: { 
+            message: 'Registration successful! Please check your email to verify your account.' 
+          } 
+        });
+      }
     } catch (error) {
       console.error('Registration failed:', error);
       setErrors({

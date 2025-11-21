@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using ProductAPI.Models;
+using Wordpress_Backend.Services.Email;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,6 +82,10 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("User", "Admin"));
 });
 
+// Add Email Service
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
+
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -111,11 +117,83 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         
-        // Apply pending migrations
-        await context.Database.MigrateAsync();
+        // Ensure database is created (this will create tables if they don't exist)
+        await context.Database.EnsureCreatedAsync();
+        
+        // Manually add verification columns if they don't exist (for SQLite)
+        try
+        {
+            var connection = context.Database.GetDbConnection();
+            await connection.OpenAsync();
+            using var command = connection.CreateCommand();
+            
+            // Check and add VerificationTokenHash
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='VerificationTokenHash'";
+            var hashExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (hashExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN VerificationTokenHash TEXT";
+                await command.ExecuteNonQueryAsync();
+            }
+            
+            // Check and add VerificationTokenExpiresAt
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='VerificationTokenExpiresAt'";
+            var expiresExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (expiresExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN VerificationTokenExpiresAt TEXT";
+                await command.ExecuteNonQueryAsync();
+            }
+            
+            // Check and add EmailVerifiedAt
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='EmailVerifiedAt'";
+            var verifiedExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (verifiedExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN EmailVerifiedAt TEXT";
+                await command.ExecuteNonQueryAsync();
+            }
+            
+            // Check and add LastVerificationEmailSentAt
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='LastVerificationEmailSentAt'";
+            var sentExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (sentExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN LastVerificationEmailSentAt TEXT";
+                await command.ExecuteNonQueryAsync();
+            }
+            
+            await connection.CloseAsync();
+        }
+        catch (Exception columnEx)
+        {
+            // If column addition fails, log but continue
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning(columnEx, "Warning adding verification columns (they may already exist)");
+        }
+        
+        // Try to apply migrations if any exist
+        try
+        {
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            if (pendingMigrations.Any())
+            {
+                await context.Database.MigrateAsync();
+            }
+        }
+        catch (Exception migrationEx)
+        {
+            // If migration fails, log but continue (database might already be up to date)
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning(migrationEx, "Migration warning (this is usually safe to ignore if database is already up to date)");
+        }
         
         // Seed the database
         await DbInitializer.Initialize(services);
+        
+        // Log completion
+        var initLogger = services.GetRequiredService<ILogger<Program>>();
+        initLogger.LogInformation("Database initialization completed successfully.");
     }
     catch (Exception ex)
     {

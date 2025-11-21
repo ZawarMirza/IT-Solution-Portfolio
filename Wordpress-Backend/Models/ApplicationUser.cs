@@ -29,6 +29,14 @@ namespace ProductAPI.Models
         public string? RefreshToken { get; set; }
         
         public DateTime? RefreshTokenExpiryTime { get; set; }
+
+        public string? VerificationTokenHash { get; set; }
+
+        public DateTime? VerificationTokenExpiresAt { get; set; }
+
+        public DateTime? EmailVerifiedAt { get; set; }
+
+        public DateTime? LastVerificationEmailSentAt { get; set; }
         
         // Navigation property for products created by this user
         public virtual ICollection<Product> Products { get; set; } = new HashSet<Product>();

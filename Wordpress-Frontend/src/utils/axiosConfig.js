@@ -12,8 +12,11 @@ const api = axios.create({
 // Add a request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Skip for refresh token request to avoid infinite loop
-    if (config.url === '/auth/refresh-token') {
+    // Skip adding auth token for these endpoints (they don't require authentication)
+    const publicEndpoints = ['/auth/refresh-token', '/auth/verify-email', '/auth/register', '/auth/login'];
+    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url?.includes(endpoint));
+    
+    if (isPublicEndpoint) {
       return config;
     }
     

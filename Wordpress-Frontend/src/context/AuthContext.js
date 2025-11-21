@@ -102,6 +102,12 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       const response = await axios.post('http://localhost:5119/api/auth/login', credentials);
       
+      // Check if email verification is required
+      if (response.data.requiresVerification) {
+        setError(response.data.message || 'Please verify your email address before logging in.');
+        throw new Error(response.data.message || 'Email verification required');
+      }
+      
       const { token: authToken, refreshToken: newRefreshToken, user: userData } = response.data;
       
       // Update state
@@ -125,7 +131,7 @@ export const AuthProvider = ({ children }) => {
       return response.data;
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.response?.data?.message || 'Login failed. Please try again.');
+      setError(error.response?.data?.message || error.message || 'Login failed. Please try again.');
       throw error;
     }
   }, [navigate, location.state]);
@@ -134,13 +140,34 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       // Add confirmPassword field to match backend expectations
+      // Ensure property names match backend (PascalCase for C#)
       const registrationData = {
-        ...userData,
-        confirmPassword: userData.password
+        FirstName: userData.firstName,
+        LastName: userData.lastName,
+        Email: userData.email,
+        Password: userData.password,
+        ConfirmPassword: userData.password, // Match password for validation
+        Role: userData.role || 'User'
       };
+      
+      console.log('Sending registration data:', {
+        FirstName: registrationData.FirstName,
+        LastName: registrationData.LastName,
+        Email: registrationData.Email,
+        Password: '***',
+        ConfirmPassword: '***',
+        Role: registrationData.Role
+      });
+      
       const response = await axios.post('http://localhost:5119/api/auth/register', registrationData);
       
-      // Auto-login after registration if needed
+      // Registration now requires email verification - don't auto-login
+      if (response.data.requiresVerification) {
+        // Redirect to email verification page or show message
+        return response.data;
+      }
+      
+      // Legacy support: if token is provided (shouldn't happen with new flow)
       if (response.data.token) {
         const { token: authToken, refreshToken: newRefreshToken, user: userData } = response.data;
         
