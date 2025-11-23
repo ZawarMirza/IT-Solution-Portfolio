@@ -222,6 +222,30 @@ using (var scope = app.Services.CreateScope())
                 }
             }
             
+            // Create PremiumRepositoryRequests table if it doesn't exist
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='PremiumRepositoryRequests'";
+            var premiumRequestsTableExists = await command.ExecuteScalarAsync();
+            if (premiumRequestsTableExists == null)
+            {
+                command.CommandText = @"
+                    CREATE TABLE PremiumRepositoryRequests (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        UserId TEXT NOT NULL,
+                        RepositoryId INTEGER NOT NULL,
+                        Message TEXT,
+                        Status TEXT NOT NULL DEFAULT 'pending',
+                        AdminNotes TEXT,
+                        ApprovedBy TEXT,
+                        RequestedAt TEXT NOT NULL,
+                        ReviewedAt TEXT,
+                        FOREIGN KEY (UserId) REFERENCES AspNetUsers(Id),
+                        FOREIGN KEY (RepositoryId) REFERENCES Repositories(Id)
+                    )";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Created PremiumRepositoryRequests table");
+                Console.WriteLine("[Database Init] Created PremiumRepositoryRequests table");
+            }
+            
             await connection.CloseAsync();
         }
         catch (Exception columnEx)

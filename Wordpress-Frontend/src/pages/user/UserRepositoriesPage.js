@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { FaGithub, FaStar, FaRegStar, FaDownload, FaComment, FaEdit, FaEnvelope, FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -21,11 +21,34 @@ const UserRepositoriesPage = () => {
   const [comment, setComment] = useState('');
   const [activeRepoId, setActiveRepoId] = useState(null);
   const [showComments, setShowComments] = useState(false);
+  const [approvedRepos, setApprovedRepos] = useState(new Set());
+  const [pendingRepos, setPendingRepos] = useState(new Set());
+
+  // Fetch premium repository request status (approved and pending)
+  const fetchApprovedAccess = async () => {
+    if (!isAuthenticated()) return;
+    
+    try {
+      const response = await api.get('/PremiumRepositoryRequests/my-requests');
+      const approved = response.data
+        .filter((req) => req.status === 'approved')
+        .map((req) => req.repositoryId);
+      // Only show pending if it hasn't been reviewed yet (to allow re-request after unapproval)
+      // If a request was unapproved (has reviewedAt but status is pending/rejected), don't show as pending
+      const pending = response.data
+        .filter((req) => req.status === 'pending' && !req.reviewedAt)
+        .map((req) => req.repositoryId);
+      setApprovedRepos(new Set(approved));
+      setPendingRepos(new Set(pending));
+    } catch (err) {
+      console.error('Error checking request status:', err);
+    }
+  };
 
   // Fetch domains from admin
   const fetchDomains = async () => {
     try {
-      const response = await axios.get('http://localhost:5119/api/domains');
+      const response = await api.get('/domains');
       if (response.data && Array.isArray(response.data)) {
         const domainNames = response.data.map(d => d.name || d);
         setDomains(['All', ...domainNames]);
@@ -38,14 +61,12 @@ const UserRepositoriesPage = () => {
 
   // Fetch repositories from API
   const fetchRepositories = async () => {
-    const API_URL = 'http://localhost:5119/api/repositories';
-    
     try {
-      console.log('Fetching repositories from:', API_URL);
+      console.log('Fetching repositories...');
       setIsLoading(true);
       setError(null);
       
-      const response = await axios.get(API_URL, { 
+      const response = await api.get('/repositories', { 
         timeout: 5000,
         headers: {
           'Cache-Control': 'no-cache',
@@ -130,6 +151,16 @@ const UserRepositoriesPage = () => {
   useEffect(() => {
     fetchDomains();
     fetchRepositories();
+    fetchApprovedAccess();
+    
+    // Refresh request status periodically to catch unapprovals
+    const interval = setInterval(() => {
+      if (isAuthenticated()) {
+        fetchApprovedAccess();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Filter repositories based on search and filters
@@ -149,11 +180,27 @@ const UserRepositoriesPage = () => {
     });
   }, [repositories, searchTerm, selectedDomain, selectedCategory]);
 
-  // Handle download - Free items download from GitHub, Premium shows contact admin
+  // Handle download - Free items download from GitHub, Premium checks approved access
   const handleDownload = async (repo) => {
-    // Premium items require admin contact
+    // Premium items - check if user has approved access
     if (repo.category === 'Premium') {
-      handleContactAdmin(repo);
+      const hasAccess = approvedRepos.has(repo.id);
+      
+      if (hasAccess) {
+        // User has approved access, allow download
+        if (repo.downloadUrl) {
+          window.open(repo.downloadUrl, '_blank', 'noopener,noreferrer');
+          toast.success('Starting download...');
+        } else if (repo.gitHubUrl) {
+          window.open(repo.gitHubUrl, '_blank', 'noopener,noreferrer');
+          toast.success('Opening GitHub repository...');
+        } else {
+          toast.error('Download URL not available for this repository');
+        }
+      } else {
+        // No approved access, create request
+        handleContactAdmin(repo);
+      }
       return;
     }
 
@@ -180,7 +227,7 @@ const UserRepositoriesPage = () => {
       
       // Increment download count on server
       try {
-        await axios.post(`http://localhost:5119/api/repositories/${repo.id}/download`);
+        await api.put(`/repositories/${repo.id}/download`);
       } catch (err) {
         console.warn('Failed to update download count:', err);
       }
@@ -197,21 +244,29 @@ const UserRepositoriesPage = () => {
     }
   };
 
-  // Handle contact admin for premium items
-  const handleContactAdmin = (repo) => {
-    const subject = encodeURIComponent(`Request for Premium Repository: ${repo.name}`);
-    const body = encodeURIComponent(
-      `Hello Admin,\n\nI would like to request access to the following premium repository:\n\n` +
-      `Repository: ${repo.name}\n` +
-      `Description: ${repo.description}\n` +
-      `Domain: ${repo.domain}\n` +
-      `Version: ${repo.version || 'N/A'}\n\n` +
-      `Please provide access or more information.\n\nThank you!`
-    );
-    
-    // Open email client or show contact form
-    window.location.href = `mailto:admin@example.com?subject=${subject}&body=${body}`;
-    toast.info('Opening email client to contact admin...');
+  // Handle contact admin for premium items - create request
+  const handleContactAdmin = async (repo) => {
+    if (!isAuthenticated()) {
+      toast.error('Please log in to request premium repository access');
+      return;
+    }
+
+    try {
+      const response = await api.post('/PremiumRepositoryRequests', {
+        repositoryId: repo.id,
+        message: `Request for access to premium repository: ${repo.name}`
+      });
+
+      toast.success('Your request has been submitted successfully! You will receive an email when it is reviewed.');
+      // Update pending repos list immediately
+      setPendingRepos(prev => new Set([...prev, repo.id]));
+      // Refresh request status
+      fetchApprovedAccess();
+    } catch (err) {
+      console.error('Error creating request:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to submit request. Please try again.';
+      toast.error(errorMessage);
+    }
   };
 
   // Handle preview
@@ -244,7 +299,7 @@ const UserRepositoriesPage = () => {
         })
       );
 
-      await axios.post(`http://localhost:5119/api/repositories/${repoId}/rate`, { rating: newRating });
+      await api.post(`/repositories/${repoId}/rate`, { rating: newRating });
       toast.success('Rating submitted successfully');
     } catch (error) {
       console.error('Error submitting rating:', error);
@@ -267,7 +322,7 @@ const UserRepositoriesPage = () => {
     }
     
     try {
-      const response = await axios.post(`http://localhost:5119/api/repositories/${repoId}/comments`, {
+      const response = await api.post(`/repositories/${repoId}/comments`, {
         content: comment,
         userId: user.id,
         userName: user.name || user.email || 'Anonymous'
@@ -540,12 +595,29 @@ const UserRepositoriesPage = () => {
                 
                 {/* Download/Contact Button based on category */}
                 {repo.category === 'Premium' ? (
-                  <button
-                    onClick={() => handleContactAdmin(repo)}
-                    className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors flex items-center justify-center"
-                  >
-                    <FaEnvelope className="mr-1" /> Contact Admin
-                  </button>
+                  approvedRepos.has(repo.id) ? (
+                    <button
+                      onClick={() => handleDownload(repo)}
+                      className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors flex items-center justify-center"
+                    >
+                      <FaDownload className="mr-1" /> Download
+                    </button>
+                  ) : pendingRepos.has(repo.id) ? (
+                    <button
+                      disabled
+                      className="flex-1 px-3 py-2 bg-gray-400 text-white text-sm rounded cursor-not-allowed flex items-center justify-center"
+                      title="Request Pending - Waiting for admin approval"
+                    >
+                      <FaEnvelope className="mr-1" /> Pending Request
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleContactAdmin(repo)}
+                      className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors flex items-center justify-center"
+                    >
+                      <FaEnvelope className="mr-1" /> Request Access
+                    </button>
+                  )
                 ) : (
                   <button
                     onClick={() => handleDownload(repo)}

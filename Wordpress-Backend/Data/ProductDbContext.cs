@@ -17,6 +17,7 @@ namespace ProductAPI.Data
         public DbSet<Domain> Domains { get; set; }
         public DbSet<Publication> Publications { get; set; }
         public DbSet<Repository> Repositories { get; set; }
+        public DbSet<PremiumRepositoryRequest> PremiumRepositoryRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -90,6 +91,28 @@ namespace ProductAPI.Data
                 entity.Property(r => r.Status).IsRequired().HasMaxLength(20);
                 entity.Property(r => r.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(r => r.LastUpdated).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            // Configure PremiumRepositoryRequest
+            modelBuilder.Entity<PremiumRepositoryRequest>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.Property(r => r.UserId).IsRequired().HasMaxLength(450);
+                entity.Property(r => r.Status).IsRequired().HasMaxLength(20).HasDefaultValue("pending");
+                entity.Property(r => r.Message).HasMaxLength(500);
+                entity.Property(r => r.AdminNotes).HasMaxLength(1000);
+                entity.Property(r => r.RequestedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                // Relationships
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(r => r.Repository)
+                    .WithMany()
+                    .HasForeignKey(r => r.RepositoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configure Identity table names

@@ -38,6 +38,11 @@ function AdminSidebar() {
       icon: '📁'
     },
     {
+      name: 'Premium Requests',
+      path: '/admin/premium-requests',
+      icon: '🔐'
+    },
+    {
       name: 'Content',
       path: '/admin/content',
       icon: '📝'

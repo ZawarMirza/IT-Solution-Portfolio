@@ -189,14 +189,63 @@ function ProductsPage() {
       });
   }, [publications, selectedDomainPub, searchTerm, sortBy]);
 
+  // Track user's repository request status
+  const [approvedRepos, setApprovedRepos] = useState(new Set());
+  const [pendingRepos, setPendingRepos] = useState(new Set());
+  
+  useEffect(() => {
+    const checkRequestStatus = async () => {
+      if (!isAuthenticated()) return;
+      
+      try {
+        // Fetch user's requests
+        const response = await api.get('/PremiumRepositoryRequests/my-requests');
+        const approved = response.data
+          .filter((req) => req.status === 'approved')
+          .map((req) => req.repositoryId);
+        // Only show pending if it hasn't been reviewed yet (to allow re-request after unapproval)
+        // If a request was unapproved (has reviewedAt but status is pending/rejected), don't show as pending
+        const pending = response.data
+          .filter((req) => req.status === 'pending' && !req.reviewedAt)
+          .map((req) => req.repositoryId);
+        setApprovedRepos(new Set(approved));
+        setPendingRepos(new Set(pending));
+      } catch (err) {
+        console.error('Error checking request status:', err);
+      }
+    };
+    
+    if (activeTab === 'repositories') {
+      checkRequestStatus();
+    }
+  }, [isAuthenticated, activeTab]);
+
   // Handle repository download
-  const handleRepoDownload = (repo) => {
+  const handleRepoDownload = async (repo) => {
     if (repo.category === 'Premium') {
-      // Premium: Only registered users can contact admin
-      if (isAuthenticated()) {
-        handleContactAdmin(repo);
-      } else {
+      // Premium: Check if user has approved access
+      if (!isAuthenticated()) {
         toast.error('Please log in to access premium repositories');
+        return;
+      }
+
+      // Check if user has approved access
+      const hasAccess = approvedRepos.has(repo.id);
+      
+      if (hasAccess) {
+        // User has approved access, allow download
+        if (repo.downloadUrl) {
+          window.open(repo.downloadUrl, '_blank', 'noopener,noreferrer');
+          toast.success('Starting download...');
+        } else if (repo.gitHubUrl) {
+          window.open(repo.gitHubUrl, '_blank', 'noopener,noreferrer');
+          toast.success('Opening GitHub repository...');
+        } else {
+          toast.error('Download URL not available for this repository');
+        }
+      } else {
+        // No approved access, create request
+        handleContactAdmin(repo);
       }
     } else if (repo.gitHubUrl) {
       // Free repositories with GitHub URL: Registered users can download, guests can view
@@ -221,20 +270,33 @@ function ProductsPage() {
     }
   };
 
-  // Handle contact admin
-  const handleContactAdmin = (repo) => {
-    const subject = encodeURIComponent(`Request for Premium Repository: ${repo.name}`);
-    const body = encodeURIComponent(
-      `Hello Admin,\n\nI would like to request access to the following premium repository:\n\n` +
-      `Repository: ${repo.name}\n` +
-      `Description: ${repo.description}\n` +
-      `Domain: ${repo.domain}\n` +
-      `Version: ${repo.version || 'N/A'}\n\n` +
-      `Please provide access or more information.\n\nThank you!`
-    );
-    
-    window.location.href = `mailto:admin@example.com?subject=${subject}&body=${body}`;
-    toast.info('Opening email client to contact admin...');
+  // Handle contact admin - create premium repository request
+  const handleContactAdmin = async (repo) => {
+    if (!isAuthenticated()) {
+      toast.error('Please log in to request premium repository access');
+      return;
+    }
+
+    try {
+      const response = await api.post('/PremiumRepositoryRequests', {
+        repositoryId: repo.id,
+        message: `Request for access to premium repository: ${repo.name}`
+      });
+
+      toast.success('Your request has been submitted successfully! You will receive an email when it is reviewed.');
+      // Update pending repos list
+      setPendingRepos(prev => new Set([...prev, repo.id]));
+      // Refresh request status
+      const statusResponse = await api.get('/PremiumRepositoryRequests/my-requests');
+      const pending = statusResponse.data
+        .filter((req) => req.status === 'pending')
+        .map((req) => req.repositoryId);
+      setPendingRepos(new Set(pending));
+    } catch (err) {
+      console.error('Error creating request:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to submit request. Please try again.';
+      toast.error(errorMessage);
+    }
   };
 
   // Handle publication download
@@ -466,19 +528,37 @@ function ProductsPage() {
                       {/* Actions */}
                       <div className="flex gap-2">
                         {repo.category === 'Premium' ? (
-                          <button
-                            onClick={() => handleRepoDownload(repo)}
-                            disabled={!isAuthenticated()}
-                            className={`flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 ${
-                              isAuthenticated()
-                                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                                : 'bg-gray-400 text-white cursor-not-allowed'
-                            }`}
-                            title={!isAuthenticated() ? 'Please log in to access premium repositories' : 'Contact Admin'}
-                          >
-                            <FaEnvelope />
-                            {isAuthenticated() ? 'Contact Admin' : 'Login Required'}
-                          </button>
+                          approvedRepos.has(repo.id) ? (
+                            // User has approved access - show download button
+                            <button
+                              onClick={() => handleRepoDownload(repo)}
+                              className="flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 bg-green-600 hover:bg-green-700 text-white"
+                              title="Download Premium Repository"
+                            >
+                              <FaDownload />
+                              Download
+                            </button>
+                          ) : pendingRepos.has(repo.id) ? (
+                            // Request is pending - show pending status
+                            <button
+                              disabled
+                              className="flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 bg-gray-400 text-white cursor-not-allowed"
+                              title="Request Pending - Waiting for admin approval"
+                            >
+                              <FaEnvelope />
+                              Pending Request
+                            </button>
+                          ) : (
+                            // No request yet - show request button
+                            <button
+                              onClick={() => handleContactAdmin(repo)}
+                              className="flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 bg-yellow-600 hover:bg-yellow-700 text-white"
+                              title="Request Access to Premium Repository"
+                            >
+                              <FaEnvelope />
+                              Request Access
+                            </button>
+                          )
                         ) : repo.gitHubUrl ? (
                           // Free: Has GitHub URL
                           <button

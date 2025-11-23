@@ -30,6 +30,7 @@ import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminDomainsPage from './pages/admin/AdminDomainsPage';
 import AdminPublicationsPage from './pages/admin/AdminPublicationsPage';
 import AdminRepositoriesPage from './pages/admin/AdminRepositoriesPage';
+import AdminPremiumRequestsPage from './pages/admin/AdminPremiumRequestsPage';
 
 // Dashboard Components
 import UserDashboard from './pages/dashboard/UserDashboard';
@@ -185,6 +186,7 @@ function App() {
             <Route path="domains" element={<AdminDomainsPage />} />
             <Route path="publications" element={<AdminPublicationsPage />} />
             <Route path="repositories" element={<AdminRepositoriesPage />} />
+            <Route path="premium-requests" element={<AdminPremiumRequestsPage />} />
             <Route path="content" element={<AdminContentPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
           </Route>

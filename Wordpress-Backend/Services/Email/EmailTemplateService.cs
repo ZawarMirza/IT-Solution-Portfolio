@@ -267,5 +267,255 @@ namespace Wordpress_Backend.Services.Email
 
             return html.ToString();
         }
+
+        public string GeneratePremiumRequestApprovalEmail(string firstName, string repositoryName, string baseUrl)
+        {
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"en\">");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset=\"UTF-8\">");
+            html.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            html.AppendLine("    <title>Premium Repository Access Approved</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
+            html.AppendLine("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }");
+            html.AppendLine("        .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }");
+            html.AppendLine("        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }");
+            html.AppendLine("        .button { display: inline-block; padding: 12px 30px; background: #22c55e; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }");
+            html.AppendLine("        .button:hover { background: #16a34a; }");
+            html.AppendLine("        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }");
+            html.AppendLine("        .info-box { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("    <div class=\"container\">");
+            html.AppendLine("        <div class=\"header\">");
+            html.AppendLine("            <h1>✅ Access Approved!</h1>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"content\">");
+            html.AppendLine($"            <p>Hello {firstName},</p>");
+            html.AppendLine("            <p>Great news! Your request for premium repository access has been approved by our admin team.</p>");
+            html.AppendLine("            <div class=\"info-box\">");
+            html.AppendLine("                <p><strong>Repository:</strong> {System.Net.WebUtility.HtmlEncode(repositoryName)}</p>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>You can now download and access this premium repository content.</p>");
+            html.AppendLine("            <div style=\"text-align: center;\">");
+            html.AppendLine($"                <a href=\"{baseUrl}/products\" class=\"button\">View Repository</a>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>");
+            html.AppendLine("            <p>Best regards,<br>IT Solution Portfolio Team</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"footer\">");
+            html.AppendLine("            <p>This is an automated email. Please do not reply to this message.</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("    </div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString().Replace("{System.Net.WebUtility.HtmlEncode(repositoryName)}", System.Net.WebUtility.HtmlEncode(repositoryName));
+        }
+
+        public string GeneratePremiumRequestRejectionEmail(string firstName, string repositoryName, string reason)
+        {
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"en\">");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset=\"UTF-8\">");
+            html.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            html.AppendLine("    <title>Premium Repository Access Request Rejected</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
+            html.AppendLine("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }");
+            html.AppendLine("        .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }");
+            html.AppendLine("        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }");
+            html.AppendLine("        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }");
+            html.AppendLine("        .reason-box { background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("    <div class=\"container\">");
+            html.AppendLine("        <div class=\"header\">");
+            html.AppendLine("            <h1>Request Rejected</h1>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"content\">");
+            html.AppendLine($"            <p>Hello {firstName},</p>");
+            html.AppendLine("            <p>We regret to inform you that your request for premium repository access has been reviewed and unfortunately cannot be approved at this time.</p>");
+            html.AppendLine("            <div class=\"reason-box\">");
+            html.AppendLine("                <p><strong>Repository:</strong> {System.Net.WebUtility.HtmlEncode(repositoryName)}</p>");
+            html.AppendLine("                <p><strong>Reason:</strong></p>");
+            html.AppendLine("                <p>{System.Net.WebUtility.HtmlEncode(reason)}</p>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>If you have any questions about this decision, please contact our support team.</p>");
+            html.AppendLine("            <p>Best regards,<br>IT Solution Portfolio Team</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"footer\">");
+            html.AppendLine("            <p>This is an automated email. Please do not reply to this message.</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("    </div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString()
+                .Replace("{System.Net.WebUtility.HtmlEncode(repositoryName)}", System.Net.WebUtility.HtmlEncode(repositoryName))
+                .Replace("{System.Net.WebUtility.HtmlEncode(reason)}", System.Net.WebUtility.HtmlEncode(reason));
+        }
+
+        public string GeneratePremiumRequestNotificationEmail(string firstName, string repositoryName, string baseUrl)
+        {
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"en\">");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset=\"UTF-8\">");
+            html.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            html.AppendLine("    <title>Premium Repository Access Request Submitted</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
+            html.AppendLine("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }");
+            html.AppendLine("        .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }");
+            html.AppendLine("        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }");
+            html.AppendLine("        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }");
+            html.AppendLine("        .info-box { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("    <div class=\"container\">");
+            html.AppendLine("        <div class=\"header\">");
+            html.AppendLine("            <h1>📧 Request Submitted</h1>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"content\">");
+            html.AppendLine($"            <p>Hello {firstName},</p>");
+            html.AppendLine("            <p>Thank you for requesting access to a premium repository. Your request has been successfully submitted and is now pending review by our admin team.</p>");
+            html.AppendLine("            <div class=\"info-box\">");
+            html.AppendLine("                <p><strong>Repository:</strong> {System.Net.WebUtility.HtmlEncode(repositoryName)}</p>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>Our team will review your request and notify you via email once a decision has been made. This process typically takes 1-2 business days.</p>");
+            html.AppendLine("            <p>You can check the status of your request at any time by logging into your account.</p>");
+            html.AppendLine("            <p>If you have any questions, please don't hesitate to contact our support team.</p>");
+            html.AppendLine("            <p>Best regards,<br>IT Solution Portfolio Team</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"footer\">");
+            html.AppendLine("            <p>This is an automated email. Please do not reply to this message.</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("    </div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString().Replace("{System.Net.WebUtility.HtmlEncode(repositoryName)}", System.Net.WebUtility.HtmlEncode(repositoryName));
+        }
+
+        public string GeneratePremiumRequestAdminNotificationEmail(string userName, string userEmail, string repositoryName, string repositoryDescription, string userMessage, string baseUrl, int requestId)
+        {
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"en\">");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset=\"UTF-8\">");
+            html.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            html.AppendLine("    <title>New Premium Repository Access Request</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
+            html.AppendLine("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }");
+            html.AppendLine("        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }");
+            html.AppendLine("        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }");
+            html.AppendLine("        .button { display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }");
+            html.AppendLine("        .button:hover { background: #2563eb; }");
+            html.AppendLine("        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }");
+            html.AppendLine("        .info-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("        .user-info { background: #e0e7ff; border-left: 4px solid #6366f1; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("    <div class=\"container\">");
+            html.AppendLine("        <div class=\"header\">");
+            html.AppendLine("            <h1>🔔 New Premium Access Request</h1>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"content\">");
+            html.AppendLine("            <p>Hello Admin,</p>");
+            html.AppendLine("            <p>A new request for premium repository access has been submitted and requires your review.</p>");
+            html.AppendLine("            <div class=\"user-info\">");
+            html.AppendLine("                <p><strong>Requested By:</strong> {System.Net.WebUtility.HtmlEncode(userName)}</p>");
+            html.AppendLine("                <p><strong>Email:</strong> {System.Net.WebUtility.HtmlEncode(userEmail)}</p>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <div class=\"info-box\">");
+            html.AppendLine("                <p><strong>Repository:</strong> {System.Net.WebUtility.HtmlEncode(repositoryName)}</p>");
+            html.AppendLine("                <p><strong>Description:</strong> {System.Net.WebUtility.HtmlEncode(repositoryDescription)}</p>");
+            if (!string.IsNullOrWhiteSpace(userMessage))
+            {
+                html.AppendLine("                <p><strong>User Message:</strong></p>");
+                html.AppendLine("                <p>{System.Net.WebUtility.HtmlEncode(userMessage)}</p>");
+            }
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>Please review this request and take appropriate action (approve or reject) from the admin dashboard.</p>");
+            html.AppendLine("            <div style=\"text-align: center;\">");
+            html.AppendLine($"                <a href=\"{baseUrl}/admin/premium-requests\" class=\"button\">Review Request</a>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>Request ID: <strong>{requestId}</strong></p>");
+            html.AppendLine("            <p>Best regards,<br>IT Solution Portfolio System</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"footer\">");
+            html.AppendLine("            <p>This is an automated email. Please do not reply to this message.</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("    </div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString()
+                .Replace("{System.Net.WebUtility.HtmlEncode(userName)}", System.Net.WebUtility.HtmlEncode(userName))
+                .Replace("{System.Net.WebUtility.HtmlEncode(userEmail)}", System.Net.WebUtility.HtmlEncode(userEmail))
+                .Replace("{System.Net.WebUtility.HtmlEncode(repositoryName)}", System.Net.WebUtility.HtmlEncode(repositoryName))
+                .Replace("{System.Net.WebUtility.HtmlEncode(repositoryDescription)}", System.Net.WebUtility.HtmlEncode(repositoryDescription ?? "No description available"))
+                .Replace("{System.Net.WebUtility.HtmlEncode(userMessage)}", System.Net.WebUtility.HtmlEncode(userMessage ?? "No message provided"))
+                .Replace("{requestId}", requestId.ToString());
+        }
+
+        public string GeneratePremiumRequestUnapprovalEmail(string firstName, string repositoryName, string reason)
+        {
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"en\">");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset=\"UTF-8\">");
+            html.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            html.AppendLine("    <title>Premium Repository Access Revoked</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
+            html.AppendLine("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }");
+            html.AppendLine("        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }");
+            html.AppendLine("        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }");
+            html.AppendLine("        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }");
+            html.AppendLine("        .reason-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("    <div class=\"container\">");
+            html.AppendLine("        <div class=\"header\">");
+            html.AppendLine("            <h1>⚠️ Access Revoked</h1>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"content\">");
+            html.AppendLine($"            <p>Hello {firstName},</p>");
+            html.AppendLine("            <p>We regret to inform you that your previously approved access to a premium repository has been revoked by an administrator.</p>");
+            html.AppendLine("            <div class=\"reason-box\">");
+            html.AppendLine("                <p><strong>Repository:</strong> {System.Net.WebUtility.HtmlEncode(repositoryName)}</p>");
+            html.AppendLine("                <p><strong>Reason:</strong></p>");
+            html.AppendLine("                <p>{System.Net.WebUtility.HtmlEncode(reason)}</p>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>You will no longer be able to download or access this premium repository content.</p>");
+            html.AppendLine("            <p>If you have any questions about this decision, please contact our support team.</p>");
+            html.AppendLine("            <p>Best regards,<br>IT Solution Portfolio Team</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"footer\">");
+            html.AppendLine("            <p>This is an automated email. Please do not reply to this message.</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("    </div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString()
+                .Replace("{System.Net.WebUtility.HtmlEncode(repositoryName)}", System.Net.WebUtility.HtmlEncode(repositoryName))
+                .Replace("{System.Net.WebUtility.HtmlEncode(reason)}", System.Net.WebUtility.HtmlEncode(reason));
+        }
     }
 }
