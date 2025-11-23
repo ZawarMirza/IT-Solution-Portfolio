@@ -43,6 +43,11 @@ function AdminSidebar() {
       icon: '🔐'
     },
     {
+      name: 'Reviews',
+      path: '/admin/reviews',
+      icon: '⭐'
+    },
+    {
       name: 'Content',
       path: '/admin/content',
       icon: '📝'

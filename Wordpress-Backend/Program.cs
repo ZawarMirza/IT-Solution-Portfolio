@@ -246,6 +246,29 @@ using (var scope = app.Services.CreateScope())
                 Console.WriteLine("[Database Init] Created PremiumRepositoryRequests table");
             }
             
+            // Create Reviews table if it doesn't exist
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Reviews'";
+            var reviewsTableExists = await command.ExecuteScalarAsync();
+            if (reviewsTableExists == null)
+            {
+                command.CommandText = @"
+                    CREATE TABLE Reviews (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        UserId TEXT NOT NULL,
+                        RepositoryId INTEGER NOT NULL,
+                        Rating INTEGER NOT NULL,
+                        Comment TEXT,
+                        CreatedAt TEXT NOT NULL,
+                        UpdatedAt TEXT,
+                        FOREIGN KEY (UserId) REFERENCES AspNetUsers(Id),
+                        FOREIGN KEY (RepositoryId) REFERENCES Repositories(Id),
+                        UNIQUE(UserId, RepositoryId)
+                    )";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Created Reviews table");
+                Console.WriteLine("[Database Init] Created Reviews table");
+            }
+            
             await connection.CloseAsync();
         }
         catch (Exception columnEx)

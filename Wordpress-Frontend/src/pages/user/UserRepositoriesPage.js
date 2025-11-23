@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context';
 import api from '../../utils/axiosConfig';
-import { FaGithub, FaStar, FaRegStar, FaDownload, FaComment, FaEdit, FaEnvelope, FaEye } from 'react-icons/fa';
+import { FaGithub, FaStar, FaRegStar, FaDownload, FaComment, FaEdit, FaEnvelope, FaEye, FaStar as FaStarSolid } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -23,6 +23,12 @@ const UserRepositoriesPage = () => {
   const [showComments, setShowComments] = useState(false);
   const [approvedRepos, setApprovedRepos] = useState(new Set());
   const [pendingRepos, setPendingRepos] = useState(new Set());
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewingRepo, setReviewingRepo] = useState(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [userReviews, setUserReviews] = useState(new Map());
+  const [repositoryReviews, setRepositoryReviews] = useState(new Map()); // Map of repoId -> { averageRating, reviewCount, reviews }
 
   // Fetch premium repository request status (approved and pending)
   const fetchApprovedAccess = async () => {
@@ -42,6 +48,57 @@ const UserRepositoriesPage = () => {
       setPendingRepos(new Set(pending));
     } catch (err) {
       console.error('Error checking request status:', err);
+    }
+  };
+
+  // Fetch user's reviews
+  const fetchUserReviews = async () => {
+    if (!isAuthenticated()) return;
+    
+    try {
+      const response = await api.get('/Reviews/my-reviews');
+      const reviewsMap = new Map();
+      response.data.forEach((review) => {
+        reviewsMap.set(review.repositoryId, review.id);
+      });
+      setUserReviews(reviewsMap);
+    } catch (err) {
+      console.error('Error fetching user reviews:', err);
+    }
+  };
+
+  // Fetch reviews for all repositories
+  const fetchRepositoryReviews = async () => {
+    try {
+      const reposWithReviews = new Map();
+      for (const repo of repositories) {
+        try {
+          const reviewsResponse = await api.get(`/Reviews/repository/${repo.id}`);
+          const reviews = reviewsResponse.data || [];
+          
+          // Calculate average rating and review count
+          const averageRating = reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : 0;
+          const reviewCount = reviews.length;
+          
+          reposWithReviews.set(repo.id, {
+            reviews: reviews,
+            averageRating: averageRating,
+            reviewCount: reviewCount
+          });
+        } catch (err) {
+          console.error(`Error fetching reviews for repo ${repo.id}:`, err);
+          reposWithReviews.set(repo.id, {
+            reviews: [],
+            averageRating: 0,
+            reviewCount: 0
+          });
+        }
+      }
+      setRepositoryReviews(reposWithReviews);
+    } catch (err) {
+      console.error('Error fetching repository reviews:', err);
     }
   };
 
@@ -152,6 +209,7 @@ const UserRepositoriesPage = () => {
     fetchDomains();
     fetchRepositories();
     fetchApprovedAccess();
+    fetchUserReviews();
     
     // Refresh request status periodically to catch unapprovals
     const interval = setInterval(() => {
@@ -162,6 +220,61 @@ const UserRepositoriesPage = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch reviews when repositories change
+  useEffect(() => {
+    if (repositories.length > 0) {
+      fetchRepositoryReviews();
+    }
+  }, [repositories]);
+
+  // Handle open review modal
+  const handleOpenReview = (repo) => {
+    if (!isAuthenticated()) {
+      toast.info('Please log in to review repositories');
+      return;
+    }
+    setReviewingRepo(repo);
+    const existingReviewId = userReviews.get(repo.id);
+    if (existingReviewId) {
+      toast.info('You have already reviewed this repository');
+    }
+    setReviewRating(0);
+    setReviewComment('');
+    setShowReviewModal(true);
+  };
+
+  // Handle submit review
+  const handleSubmitReview = async () => {
+    if (!reviewingRepo) return;
+    
+    if (reviewRating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+
+    try {
+      await api.post('/Reviews', {
+        repositoryId: reviewingRepo.id,
+        rating: reviewRating,
+        comment: reviewComment || null
+      });
+
+      toast.success('Review submitted successfully!');
+      setShowReviewModal(false);
+      setReviewingRepo(null);
+      setReviewRating(0);
+      setReviewComment('');
+      
+      // Refresh user reviews and repository reviews
+      fetchUserReviews();
+      fetchRepositoryReviews();
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to submit review. Please try again.';
+      toast.error(errorMessage);
+    }
+  };
 
   // Filter repositories based on search and filters
   const filteredRepositories = useMemo(() => {
@@ -499,13 +612,44 @@ const UserRepositoriesPage = () => {
 
               {/* License and Version */}
               <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                {repo.licenseType && (
-                  <span>License: {repo.licenseType}</span>
-                )}
-                {repo.version && (
-                  <span>v{repo.version}</span>
-                )}
-              </div>
+                        {repo.licenseType && (
+                          <span>License: {repo.licenseType}</span>
+                        )}
+                        {repo.version && (
+                          <span>v{repo.version}</span>
+                        )}
+                      </div>
+
+                      {/* Rating Display */}
+                      {(() => {
+                        const reviewData = repositoryReviews.get(repo.id);
+                        const averageRating = reviewData?.averageRating || 0;
+                        const reviewCount = reviewData?.reviewCount || 0;
+                        
+                        return (
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span key={star}>
+                                  {star <= Math.round(averageRating) ? (
+                                    <FaStar className="text-yellow-400 text-sm" />
+                                  ) : (
+                                    <FaRegStar className="text-gray-300 dark:text-gray-600 text-sm" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              ({averageRating > 0 ? averageRating.toFixed(1) : '0.0'})
+                            </span>
+                            {reviewCount > 0 && (
+                              <span className="text-xs text-gray-500 dark:text-gray-500">
+                                ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
 
               {/* Rating */}
               <div className="mb-4">
@@ -582,16 +726,7 @@ const UserRepositoriesPage = () => {
 
               {/* Action Buttons */}
               <div className="flex space-x-2 mt-4">
-                {/* Preview Button */}
-                {repo.documentPreviewUrl && (
-                  <button
-                    onClick={() => handlePreview(repo.documentPreviewUrl, 'document')}
-                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200 transition-colors flex items-center justify-center"
-                    title="Preview Documentation"
-                  >
-                    <FaEye className="mr-1" /> Preview
-                  </button>
-                )}
+               
                 
                 {/* Download/Contact Button based on category */}
                 {repo.category === 'Premium' ? (
@@ -629,18 +764,19 @@ const UserRepositoriesPage = () => {
                   </button>
                 )}
                 
-                {/* GitHub Link */}
-                {repo.gitHubUrl && (
-                  <a
-                    href={repo.gitHubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-2 bg-gray-800 text-white text-sm rounded hover:bg-gray-900 transition-colors flex items-center justify-center"
-                    title="View on GitHub"
+                {/* Review Button */}
+                {isAuthenticated() && (
+                  <button
+                    onClick={() => handleOpenReview(repo)}
+                    className="flex-1 px-3 py-2 bg-purple-100 text-purple-700 text-sm rounded hover:bg-purple-200 transition-colors flex items-center justify-center"
+                    title={userReviews.has(repo.id) ? "You have already reviewed this repository" : "Review Repository"}
                   >
-                    <FaGithub />
-                  </a>
+                    <FaStarSolid className="mr-1" /> Review
+                  </button>
                 )}
+
+                
+               
               </div>
             </div>
           </div>
@@ -712,6 +848,117 @@ const UserRepositoriesPage = () => {
       <div className="space-y-6">
         {renderContent()}
       </div>
+
+      {/* Review Modal */}
+      {showReviewModal && reviewingRepo && (
+        <div
+          className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-[9999]"
+          onClick={() => {
+            setShowReviewModal(false);
+            setReviewingRepo(null);
+            setReviewRating(0);
+            setReviewComment('');
+          }}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Review Repository</h2>
+                <button
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setReviewingRepo(null);
+                    setReviewRating(0);
+                    setReviewComment('');
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  {reviewingRepo.name}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {reviewingRepo.description}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Rating <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="text-3xl transition-colors"
+                    >
+                      {star <= reviewRating ? (
+                        <FaStar className="text-yellow-400" />
+                      ) : (
+                        <FaRegStar className="text-gray-300 dark:text-gray-600" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {reviewRating > 0 && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    {reviewRating} out of 5 stars
+                  </p>
+                )}
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Comment (Optional)
+                </label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                  rows="4"
+                  placeholder="Share your thoughts about this repository..."
+                  maxLength={2000}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {reviewComment.length}/2000 characters
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setReviewingRepo(null);
+                    setReviewRating(0);
+                    setReviewComment('');
+                  }}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={reviewRating === 0}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Submit Review
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

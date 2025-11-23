@@ -18,6 +18,7 @@ namespace ProductAPI.Data
         public DbSet<Publication> Publications { get; set; }
         public DbSet<Repository> Repositories { get; set; }
         public DbSet<PremiumRepositoryRequest> PremiumRepositoryRequests { get; set; }
+        public DbSet<Review> Reviews { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -113,6 +114,30 @@ namespace ProductAPI.Data
                     .WithMany()
                     .HasForeignKey(r => r.RepositoryId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure Review
+            modelBuilder.Entity<Review>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.Property(r => r.UserId).IsRequired().HasMaxLength(450);
+                entity.Property(r => r.Rating).IsRequired();
+                entity.Property(r => r.Comment).HasMaxLength(2000);
+                entity.Property(r => r.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                // Relationships
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(r => r.Repository)
+                    .WithMany()
+                    .HasForeignKey(r => r.RepositoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                // Prevent duplicate reviews from same user for same repository
+                entity.HasIndex(r => new { r.UserId, r.RepositoryId }).IsUnique();
             });
 
             // Configure Identity table names
