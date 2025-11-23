@@ -4,6 +4,7 @@ import { useAuth } from "../context";
 import GuestNavigation from './navigation/GuestNavigation';
 import AdminNavigation from './navigation/AdminNavigation';
 import UserNavigation from './navigation/UserNavigation';
+import GlobalSearch from './GlobalSearch';
 
 const Navigation = () => {
   const { user, isAdmin, isUser, isGuest, logout } = useAuth();
@@ -30,7 +31,8 @@ const Navigation = () => {
             {user && isUser() && !isAdmin() && <UserNavigation />}
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
+            <GlobalSearch />
             {user ? (
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700">

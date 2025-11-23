@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import DarkModeToggle from './DarkModeToggle';
+import GlobalSearch from './GlobalSearch';
 import axios from 'axios';
 
 function Header() {
@@ -103,6 +104,9 @@ function Header() {
                 </div>
               )}
             </li>
+            <li className="flex items-center">
+              <GlobalSearch />
+            </li>
             <li>
               <Link to="/login" className="hover:text-blue-300 transition duration-300">Login</Link>
             </li>
@@ -193,6 +197,11 @@ function Header() {
                     </Link>
                   </div>
                 )}
+              </div>
+            </li>
+            <li className="py-2 border-b border-gray-600">
+              <div className="flex justify-center">
+                <GlobalSearch />
               </div>
             </li>
             <li className="py-2 border-b border-gray-600">

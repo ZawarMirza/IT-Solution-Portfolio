@@ -2,12 +2,31 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context';
 import api from '../utils/axiosConfig';
-import { FaGithub, FaDownload, FaEnvelope, FaTag, FaFileAlt, FaVideo, FaImage, FaSearch, FaFilter, FaEye, FaStar, FaRegStar } from 'react-icons/fa';
+import { FaGithub, FaDownload, FaEnvelope, FaTag, FaFileAlt, FaVideo, FaSearch, FaFilter, FaEye, FaStar, FaRegStar } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 function ProductsPage() {
-  const { user, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState('repositories'); // 'repositories' or 'publications'
+  const { isAuthenticated } = useAuth();
+  const [activeTab, setActiveTab] = useState('products'); // 'products', 'solutions', 'publications', 'repositories'
+  
+  // Get search params from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchCategory = urlParams.get('category');
+  const searchDomain = urlParams.get('domain');
+  
+  // Set active tab based on URL params
+  useEffect(() => {
+    if (searchCategory) {
+      const categoryLower = searchCategory.toLowerCase();
+      if (categoryLower === 'products' || categoryLower === 'solutions') {
+        setActiveTab(categoryLower === 'products' ? 'products' : 'solutions');
+      } else if (categoryLower === 'publications') {
+        setActiveTab('publications');
+      } else if (categoryLower === 'repositories') {
+        setActiveTab('repositories');
+      }
+    }
+  }, [searchCategory]);
   
   // Common state
   const [domains, setDomains] = useState(['All']);
@@ -26,6 +45,14 @@ function ProductsPage() {
   const [userReviews, setUserReviews] = useState(new Map()); // Map of repoId -> reviewId
   const [reviews, setReviews] = useState(new Map()); // Map of repoId -> reviews array
   
+  // Products state
+  const [products, setProducts] = useState([]);
+  const [selectedDomainProduct, setSelectedDomainProduct] = useState('All');
+  
+  // Solutions state (using products for now)
+  const [solutions, setSolutions] = useState([]);
+  const [selectedDomainSolution, setSelectedDomainSolution] = useState('All');
+  
   // Repositories state
   const [repositories, setRepositories] = useState([]);
   const [selectedDomainRepo, setSelectedDomainRepo] = useState('All');
@@ -35,6 +62,21 @@ function ProductsPage() {
   const [selectedDomainPub, setSelectedDomainPub] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  
+  // Apply domain filter from URL params
+  useEffect(() => {
+    if (searchDomain) {
+      if (activeTab === 'products') {
+        setSelectedDomainProduct(searchDomain);
+      } else if (activeTab === 'solutions') {
+        setSelectedDomainSolution(searchDomain);
+      } else if (activeTab === 'publications') {
+        setSelectedDomainPub(searchDomain);
+      } else if (activeTab === 'repositories') {
+        setSelectedDomainRepo(searchDomain);
+      }
+    }
+  }, [searchDomain, activeTab]);
 
   // Fetch domains
   useEffect(() => {
@@ -49,6 +91,60 @@ function ProductsPage() {
     };
     fetchDomains();
   }, []);
+
+  // Fetch products
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await api.get('/products');
+        
+        if (!response.data || !Array.isArray(response.data)) {
+          throw new Error('Invalid response format');
+        }
+        
+        setProducts(response.data);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError('Failed to load products. Please try again.');
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (activeTab === 'products') {
+      fetchProducts();
+    }
+  }, [activeTab]);
+
+  // Fetch solutions (using products for now)
+  useEffect(() => {
+    const fetchSolutions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await api.get('/products');
+        
+        if (!response.data || !Array.isArray(response.data)) {
+          throw new Error('Invalid response format');
+        }
+        
+        setSolutions(response.data);
+      } catch (err) {
+        console.error('Error fetching solutions:', err);
+        setError('Failed to load solutions. Please try again.');
+        setSolutions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (activeTab === 'solutions') {
+      fetchSolutions();
+    }
+  }, [activeTab]);
 
   // Fetch repositories
   useEffect(() => {
@@ -140,6 +236,22 @@ function ProductsPage() {
       fetchPublications();
     }
   }, [activeTab]);
+
+  // Filter products by domain
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesDomain = selectedDomainProduct === 'All' || product.domain?.name === selectedDomainProduct;
+      return matchesDomain;
+    });
+  }, [products, selectedDomainProduct]);
+
+  // Filter solutions by domain
+  const filteredSolutions = useMemo(() => {
+    return solutions.filter((solution) => {
+      const matchesDomain = selectedDomainSolution === 'All' || solution.domain?.name === selectedDomainSolution;
+      return matchesDomain;
+    });
+  }, [solutions, selectedDomainSolution]);
 
   // Filter repositories by domain and access level
   const filteredRepositories = useMemo(() => {
@@ -473,10 +585,43 @@ function ProductsPage() {
       {/* Tabs Section */}
       <div className="bg-white dark:bg-gray-800 sticky top-0 z-20 shadow-md transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex border-b border-gray-200 dark:border-gray-700">
+          <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`px-6 py-4 text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
+                activeTab === 'products'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              <FaTag className="inline mr-2" />
+              Products
+            </button>
+            <button
+              onClick={() => setActiveTab('solutions')}
+              className={`px-6 py-4 text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
+                activeTab === 'solutions'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              <FaTag className="inline mr-2" />
+              Solutions
+            </button>
+            <button
+              onClick={() => setActiveTab('publications')}
+              className={`px-6 py-4 text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
+                activeTab === 'publications'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+            >
+              <FaFileAlt className="inline mr-2" />
+              Publications
+            </button>
             <button
               onClick={() => setActiveTab('repositories')}
-              className={`px-6 py-4 text-sm font-medium transition-colors duration-200 ${
+              className={`px-6 py-4 text-sm font-medium transition-colors duration-200 whitespace-nowrap ${
                 activeTab === 'repositories'
                   ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
@@ -484,17 +629,6 @@ function ProductsPage() {
             >
               <FaGithub className="inline mr-2" />
               Repositories
-            </button>
-            <button
-              onClick={() => setActiveTab('publications')}
-              className={`px-6 py-4 text-sm font-medium transition-colors duration-200 ${
-                activeTab === 'publications'
-                  ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              <FaFileAlt className="inline mr-2" />
-              Research & Publications
             </button>
           </div>
         </div>
@@ -511,6 +645,144 @@ function ProductsPage() {
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 p-4 mb-6">
             <p className="text-red-700 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
+        {/* Products Tab */}
+        {activeTab === 'products' && !loading && (
+          <div>
+            {/* Domain Filter */}
+            <div className="mb-6">
+              <div className="flex items-center mb-4">
+                <FaFilter className="mr-2 text-gray-600 dark:text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Filter by Domain</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+            {domains.map((domain) => (
+              <button
+                key={domain}
+                    onClick={() => setSelectedDomainProduct(domain)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                      selectedDomainProduct === domain
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+              >
+                {domain}
+              </button>
+            ))}
+          </div>
+        </div>
+
+            {/* Products Grid */}
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">No products found.</p>
+      </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                    >
+                      {product.image && (
+                        <div className="h-48 overflow-hidden bg-gray-200 dark:bg-gray-700">
+                          <img
+                            src={getImageUrl(product.image)}
+                            alt={product.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="p-6">
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
+                          {product.title}
+                        </h3>
+                        {product.caption && (
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
+                            {product.caption}
+                          </p>
+                        )}
+                        {product.domain && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            {product.domain.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Solutions Tab */}
+        {activeTab === 'solutions' && !loading && (
+          <div>
+            {/* Domain Filter */}
+            <div className="mb-6">
+              <div className="flex items-center mb-4">
+                <FaFilter className="mr-2 text-gray-600 dark:text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Filter by Domain</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {domains.map((domain) => (
+                  <button
+                    key={domain}
+                    onClick={() => setSelectedDomainSolution(domain)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                      selectedDomainSolution === domain
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {domain}
+                  </button>
+                ))}
+            </div>
+            </div>
+
+            {/* Solutions Grid */}
+            {filteredSolutions.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">No solutions found.</p>
+            </div>
+          ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredSolutions.map((solution) => (
+                    <div
+                      key={solution.id}
+                      className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                    >
+                      {solution.image && (
+                        <div className="h-48 overflow-hidden bg-gray-200 dark:bg-gray-700">
+                          <img
+                            src={getImageUrl(solution.image)}
+                            alt={solution.title}
+                            className="w-full h-full object-cover"
+                          />
+                </div>
+                      )}
+                      <div className="p-6">
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
+                          {solution.title}
+                        </h3>
+                        {solution.caption && (
+                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
+                            {solution.caption}
+                          </p>
+                        )}
+                        {solution.domain && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            {solution.domain.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -583,8 +855,8 @@ function ProductsPage() {
                           onError={(e) => {
                             e.target.style.display = 'none';
                           }}
-                        />
-                      </div>
+                          />
+                        </div>
                     )}
 
                     <div className="p-6">
@@ -685,7 +957,7 @@ function ProductsPage() {
                             >
                               <FaDownload />
                               Download
-                            </button>
+                          </button>
                           ) : pendingRepos.has(repo.id) ? (
                             // Request is pending - show pending status
                             <button
@@ -775,13 +1047,13 @@ function ProductsPage() {
                         <span>⭐ {repo.stars || 0}</span>
                         <span>🍴 {repo.forks || 0}</span>
                         <span>⬇️ {repo.downloads || 0}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
-            )}
-            </div>
+          )}
+        </div>
         )}
 
         {/* Publications Tab */}
@@ -799,7 +1071,7 @@ function ProductsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
-            </div>
+      </div>
 
               {/* Filters */}
               <div className="flex flex-wrap items-center gap-4">
@@ -920,11 +1192,11 @@ function ProductsPage() {
                         >
                           <FaDownload />
                           {isAuthenticated() ? 'Download' : 'Login to Download'}
-                        </button>
+          </button>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           {pub.downloads || 0} downloads
                         </span>
-              </div>
+        </div>
 
                       {/* Published Date */}
                       {pub.publishedDate && (
@@ -932,7 +1204,7 @@ function ProductsPage() {
                           Published: {new Date(pub.publishedDate).toLocaleDateString()}
                         </p>
           )}
-        </div>
+      </div>
       </div>
                 ))}
               </div>
@@ -1244,8 +1516,8 @@ function ProductsPage() {
             </div>
           </div>
         )}
-      </div>
-    );
-  }
+    </div>
+  );
+}
 
-  export default ProductsPage;
+export default ProductsPage;

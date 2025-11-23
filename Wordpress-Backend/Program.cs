@@ -269,6 +269,33 @@ using (var scope = app.Services.CreateScope())
                 Console.WriteLine("[Database Init] Created Reviews table");
             }
             
+            // Create Feedbacks table if it doesn't exist
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Feedbacks'";
+            var feedbacksTableExists = await command.ExecuteScalarAsync();
+            if (feedbacksTableExists == null)
+            {
+                command.CommandText = @"
+                    CREATE TABLE Feedbacks (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        FirstName TEXT NOT NULL,
+                        LastName TEXT NOT NULL,
+                        WorkEmail TEXT NOT NULL,
+                        CompanyName TEXT NOT NULL,
+                        Country TEXT NOT NULL,
+                        HowCanWeHelp TEXT NOT NULL,
+                        ProductServiceInterest TEXT NOT NULL,
+                        HowDidYouHearAboutUs TEXT NOT NULL,
+                        ConsentGiven INTEGER NOT NULL,
+                        SubmittedAt TEXT NOT NULL,
+                        IsRead INTEGER NOT NULL DEFAULT 0,
+                        ReadAt TEXT,
+                        ReadBy TEXT
+                    )";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Created Feedbacks table");
+                Console.WriteLine("[Database Init] Created Feedbacks table");
+            }
+            
             await connection.CloseAsync();
         }
         catch (Exception columnEx)

@@ -11,6 +11,7 @@ import { Toaster } from 'react-hot-toast';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import ProductsPage from './pages/ProductsPage';
+import ContactPage from './pages/ContactPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -32,6 +33,7 @@ import AdminPublicationsPage from './pages/admin/AdminPublicationsPage';
 import AdminRepositoriesPage from './pages/admin/AdminRepositoriesPage';
 import AdminPremiumRequestsPage from './pages/admin/AdminPremiumRequestsPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
+import AdminFeedbacksPage from './pages/admin/AdminFeedbacksPage';
 
 // Dashboard Components
 import UserDashboard from './pages/dashboard/UserDashboard';
@@ -158,6 +160,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="/not-found" element={<NotFoundPage />} />
           </Route>
@@ -189,6 +192,7 @@ function App() {
             <Route path="repositories" element={<AdminRepositoriesPage />} />
             <Route path="premium-requests" element={<AdminPremiumRequestsPage />} />
             <Route path="reviews" element={<AdminReviewsPage />} />
+            <Route path="feedbacks" element={<AdminFeedbacksPage />} />
             <Route path="content" element={<AdminContentPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
           </Route>

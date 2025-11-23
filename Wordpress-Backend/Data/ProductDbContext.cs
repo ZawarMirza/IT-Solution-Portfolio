@@ -19,6 +19,7 @@ namespace ProductAPI.Data
         public DbSet<Repository> Repositories { get; set; }
         public DbSet<PremiumRepositoryRequest> PremiumRepositoryRequests { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<Feedback> Feedbacks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -138,6 +139,21 @@ namespace ProductAPI.Data
                 
                 // Prevent duplicate reviews from same user for same repository
                 entity.HasIndex(r => new { r.UserId, r.RepositoryId }).IsUnique();
+            });
+
+            // Configure Feedback
+            modelBuilder.Entity<Feedback>(entity =>
+            {
+                entity.HasKey(f => f.Id);
+                entity.Property(f => f.FirstName).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.LastName).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.WorkEmail).IsRequired().HasMaxLength(255);
+                entity.Property(f => f.CompanyName).IsRequired().HasMaxLength(200);
+                entity.Property(f => f.Country).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.HowCanWeHelp).IsRequired().HasMaxLength(2000);
+                entity.Property(f => f.ProductServiceInterest).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.HowDidYouHearAboutUs).IsRequired().HasMaxLength(100);
+                entity.Property(f => f.SubmittedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // Configure Identity table names

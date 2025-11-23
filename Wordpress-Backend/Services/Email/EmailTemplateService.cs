@@ -633,5 +633,91 @@ namespace Wordpress_Backend.Services.Email
                 .Replace("{System.Net.WebUtility.HtmlEncode(comment)}", System.Net.WebUtility.HtmlEncode(comment ?? "No comment provided"))
                 .Replace("{reviewId}", reviewId.ToString());
         }
+
+        public string GenerateFeedbackNotificationEmail(string fullName, string email, string companyName, string country, string howCanWeHelp, string productServiceInterest, string howDidYouHearAboutUs, string baseUrl, int feedbackId)
+        {
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"en\">");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset=\"UTF-8\">");
+            html.AppendLine("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+            html.AppendLine("    <title>New Feedback Received</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }");
+            html.AppendLine("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }");
+            html.AppendLine("        .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }");
+            html.AppendLine("        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }");
+            html.AppendLine("        .button { display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }");
+            html.AppendLine("        .button:hover { background: #2563eb; }");
+            html.AppendLine("        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }");
+            html.AppendLine("        .info-box { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px; }");
+            html.AppendLine("        .detail-row { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }");
+            html.AppendLine("        .detail-label { font-weight: bold; color: #4b5563; }");
+            html.AppendLine("        .detail-value { color: #1f2937; margin-top: 5px; }");
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("    <div class=\"container\">");
+            html.AppendLine("        <div class=\"header\">");
+            html.AppendLine("            <h1>📧 New Feedback Received</h1>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"content\">");
+            html.AppendLine("            <p>Hello Admin,</p>");
+            html.AppendLine("            <p>A new feedback has been submitted through the contact form.</p>");
+            html.AppendLine("            <div class=\"info-box\">");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">Name:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(fullName)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">Email:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(email)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">Company:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(companyName)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">Country:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(country)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">Product/Service Interest:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(productServiceInterest)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">How did they hear about us:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(howDidYouHearAboutUs)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("                <div class=\"detail-row\">");
+            html.AppendLine("                    <div class=\"detail-label\">Message:</div>");
+            html.AppendLine("                    <div class=\"detail-value\">{System.Net.WebUtility.HtmlEncode(howCanWeHelp)}</div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>You can view and manage this feedback from the admin dashboard.</p>");
+            html.AppendLine("            <div style=\"text-align: center;\">");
+            html.AppendLine($"                <a href=\"{baseUrl}/admin/feedbacks\" class=\"button\">View Feedback</a>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <p>Feedback ID: <strong>{feedbackId}</strong></p>");
+            html.AppendLine("            <p>Best regards,<br>IT Solution Portfolio System</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("        <div class=\"footer\">");
+            html.AppendLine("            <p>This is an automated email. Please do not reply to this message.</p>");
+            html.AppendLine("        </div>");
+            html.AppendLine("    </div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString()
+                .Replace("{System.Net.WebUtility.HtmlEncode(fullName)}", System.Net.WebUtility.HtmlEncode(fullName))
+                .Replace("{System.Net.WebUtility.HtmlEncode(email)}", System.Net.WebUtility.HtmlEncode(email))
+                .Replace("{System.Net.WebUtility.HtmlEncode(companyName)}", System.Net.WebUtility.HtmlEncode(companyName))
+                .Replace("{System.Net.WebUtility.HtmlEncode(country)}", System.Net.WebUtility.HtmlEncode(country))
+                .Replace("{System.Net.WebUtility.HtmlEncode(productServiceInterest)}", System.Net.WebUtility.HtmlEncode(productServiceInterest))
+                .Replace("{System.Net.WebUtility.HtmlEncode(howDidYouHearAboutUs)}", System.Net.WebUtility.HtmlEncode(howDidYouHearAboutUs))
+                .Replace("{System.Net.WebUtility.HtmlEncode(howCanWeHelp)}", System.Net.WebUtility.HtmlEncode(howCanWeHelp))
+                .Replace("{feedbackId}", feedbackId.ToString());
+        }
     }
 }

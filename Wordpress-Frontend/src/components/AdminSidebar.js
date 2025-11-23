@@ -48,6 +48,11 @@ function AdminSidebar() {
       icon: '⭐'
     },
     {
+      name: 'Feedbacks',
+      path: '/admin/feedbacks',
+      icon: '📧'
+    },
+    {
       name: 'Content',
       path: '/admin/content',
       icon: '📝'
