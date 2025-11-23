@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context';
 import api from '../utils/axiosConfig';
-import { FaGithub, FaDownload, FaEnvelope, FaTag, FaFileAlt, FaVideo, FaImage, FaSearch, FaFilter } from 'react-icons/fa';
+import { FaGithub, FaDownload, FaEnvelope, FaTag, FaFileAlt, FaVideo, FaImage, FaSearch, FaFilter, FaEye } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 function ProductsPage() {
@@ -12,6 +13,10 @@ function ProductsPage() {
   const [domains, setDomains] = useState(['All']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // View details modal state
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingRepo, setViewingRepo] = useState(null);
   
   // Repositories state
   const [repositories, setRepositories] = useState([]);
@@ -128,13 +133,30 @@ function ProductsPage() {
     }
   }, [activeTab]);
 
-  // Filter repositories by domain
+  // Filter repositories by domain and access level
   const filteredRepositories = useMemo(() => {
-    if (selectedDomainRepo === 'All') {
-      return repositories;
+    let filtered = repositories;
+    
+    // Filter by domain
+    if (selectedDomainRepo !== 'All') {
+      filtered = filtered.filter(repo => repo.domain === selectedDomainRepo);
     }
-    return repositories.filter(repo => repo.domain === selectedDomainRepo);
-  }, [repositories, selectedDomainRepo]);
+    
+    // Filter by access level based on user authentication
+    if (!isAuthenticated()) {
+      // Guest (not logged in): Show non-premium AND free repositories
+      // Non-premium = Free category but NO GitHub URL (view-only content)
+      // Free = Free category WITH GitHub URL (downloadable)
+      filtered = filtered.filter(repo => {
+        // Show free repositories (with GitHub URL) and non-premium (without GitHub URL)
+        return repo.category === 'Free';
+      });
+    }
+    // Registered User (logged in): Show ALL repositories (free, premium, non-premium)
+    // No filtering needed - show everything
+    
+    return filtered;
+  }, [repositories, selectedDomainRepo, isAuthenticated]);
 
   // Filter and sort publications
   const filteredPublications = useMemo(() => {
@@ -169,11 +191,33 @@ function ProductsPage() {
 
   // Handle repository download
   const handleRepoDownload = (repo) => {
-    if (repo.category === 'Free' && repo.gitHubUrl) {
-      window.open(repo.gitHubUrl, '_blank', 'noopener,noreferrer');
-      toast.success('Opening GitHub repository...');
-    } else if (repo.category === 'Premium') {
-      handleContactAdmin(repo);
+    if (repo.category === 'Premium') {
+      // Premium: Only registered users can contact admin
+      if (isAuthenticated()) {
+        handleContactAdmin(repo);
+      } else {
+        toast.error('Please log in to access premium repositories');
+      }
+    } else if (repo.gitHubUrl) {
+      // Free repositories with GitHub URL: Registered users can download, guests can view
+      if (isAuthenticated()) {
+        // Registered user: can download
+        window.open(repo.gitHubUrl, '_blank', 'noopener,noreferrer');
+        toast.success('Opening GitHub repository...');
+      } else {
+        // Guest: view-only, show message
+        toast.info('Please log in to download repositories');
+      }
+    } else {
+      // Non-premium (Free category but no GitHub URL): Registered users can download if downloadUrl exists, guests view-only
+      if (isAuthenticated() && repo.downloadUrl) {
+        window.open(repo.downloadUrl, '_blank', 'noopener,noreferrer');
+        toast.success('Starting download...');
+      } else if (!isAuthenticated()) {
+        toast.info('Please log in to download. This content is view-only for guests.');
+      } else {
+        toast.info('Download URL not available for this repository.');
+      }
     }
   };
 
@@ -294,6 +338,27 @@ function ProductsPage() {
         {/* Repositories Tab */}
         {activeTab === 'repositories' && !loading && (
           <div>
+            {/* Info message for guests */}
+            {!isAuthenticated() && (
+              <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 p-4 rounded">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Guest View:</strong> You are viewing free and non-premium repositories. 
+                      <Link to="/login" className="ml-1 font-medium underline hover:text-blue-900 dark:hover:text-blue-200">
+                        Log in
+                      </Link> to access all repositories including premium content.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Domain Filter */}
             <div className="mb-6">
               <div className="flex items-center mb-4">
@@ -351,12 +416,18 @@ function ProductsPage() {
                         </h3>
                         <span
                           className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                            repo.category === 'Free'
+                            repo.category === 'Premium'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : repo.gitHubUrl
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                           }`}
                         >
-                          {repo.category}
+                          {repo.category === 'Premium' 
+                            ? 'Premium' 
+                            : repo.gitHubUrl 
+                            ? 'Free' 
+                            : 'Non-Premium'}
                         </span>
                       </div>
 
@@ -394,21 +465,49 @@ function ProductsPage() {
 
                       {/* Actions */}
                       <div className="flex gap-2">
-                        {repo.category === 'Free' ? (
+                        {repo.category === 'Premium' ? (
                           <button
                             onClick={() => handleRepoDownload(repo)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded transition duration-200"
-                          >
-                            <FaGithub />
-                            Download from GitHub
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleContactAdmin(repo)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded transition duration-200"
+                            disabled={!isAuthenticated()}
+                            className={`flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 ${
+                              isAuthenticated()
+                                ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                                : 'bg-gray-400 text-white cursor-not-allowed'
+                            }`}
+                            title={!isAuthenticated() ? 'Please log in to access premium repositories' : 'Contact Admin'}
                           >
                             <FaEnvelope />
-                            Contact Admin
+                            {isAuthenticated() ? 'Contact Admin' : 'Login Required'}
+                          </button>
+                        ) : repo.gitHubUrl ? (
+                          // Free: Has GitHub URL
+                          <button
+                            onClick={() => handleRepoDownload(repo)}
+                            className={`flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 ${
+                              isAuthenticated()
+                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                : 'bg-gray-400 text-white cursor-not-allowed'
+                            }`}
+                            disabled={!isAuthenticated()}
+                            title={!isAuthenticated() ? 'Please log in to download' : 'Download from GitHub'}
+                          >
+                            <FaGithub />
+                            {isAuthenticated() ? 'Download from GitHub' : 'Login to Download'}
+                          </button>
+                        ) : (
+                          // Non-premium: No GitHub URL, view-only for guests
+                          <button
+                            onClick={() => handleRepoDownload(repo)}
+                            className={`flex-1 flex items-center justify-center gap-2 font-medium py-2 px-4 rounded transition duration-200 ${
+                              isAuthenticated() && repo.downloadUrl
+                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                : 'bg-gray-400 text-white cursor-not-allowed'
+                            }`}
+                            disabled={!isAuthenticated() || !repo.downloadUrl}
+                            title={!isAuthenticated() ? 'View-only for guests. Please log in to download.' : (repo.downloadUrl ? 'Download' : 'Download not available')}
+                          >
+                            <FaDownload />
+                            {isAuthenticated() ? (repo.downloadUrl ? 'Download' : 'View Only') : 'View Only'}
                           </button>
                         )}
                         {repo.documentPreviewUrl && (
@@ -418,6 +517,18 @@ function ProductsPage() {
                             title="Preview Document"
                           >
                             <FaFileAlt />
+                          </button>
+                        )}
+                        {isAuthenticated() && (
+                          <button
+                            onClick={() => {
+                              setViewingRepo(repo);
+                              setShowViewModal(true);
+                            }}
+                            className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-indigo-700 dark:text-indigo-200 rounded transition duration-200"
+                            title="View Details"
+                          >
+                            <FaEye />
                           </button>
                         )}
       </div>
@@ -589,9 +700,202 @@ function ProductsPage() {
                 ))}
               </div>
             )}
-        </div>
+          </div>
         )}
       </div>
+
+      {/* View Repository Details Modal - Only for logged-in users */}
+      {isAuthenticated() && showViewModal && viewingRepo && (
+        <div 
+          className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-[9999]"
+          onClick={() => {
+            setShowViewModal(false);
+            setViewingRepo(null);
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Repository Details</h2>
+                <button 
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setViewingRepo(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+          </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Thumbnail */}
+                {viewingRepo.thumbnailUrl && (
+                  <div className="flex justify-center">
+                    <img 
+                      src={getImageUrl(viewingRepo.thumbnailUrl)} 
+                      alt={viewingRepo.name} 
+                      className="max-w-full h-64 object-contain rounded-lg border border-gray-200 dark:border-gray-700"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+                
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Name</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{viewingRepo.name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Version</label>
+                    <p className="text-gray-900 dark:text-white">{viewingRepo.version || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Domain</label>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {viewingRepo.domain || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Access Type</label>
+                    {(() => {
+                      // Determine access type dynamically
+                      let accessType = 'N/A';
+                      let badgeClass = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                      
+                      if (viewingRepo.category === 'Premium') {
+                        accessType = 'Premium';
+                        badgeClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                      } else if (viewingRepo.category === 'Free' && viewingRepo.gitHubUrl) {
+                        accessType = 'Free';
+                        badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                      } else if (viewingRepo.category === 'Free' && !viewingRepo.gitHubUrl) {
+                        accessType = 'Non-Premium';
+                        badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+                      }
+                      
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                          {accessType}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">License</label>
+                    <p className="text-gray-900 dark:text-white">{viewingRepo.licenseType || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Status</label>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      viewingRepo.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                      viewingRepo.status === 'archived' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
+                      'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {viewingRepo.status || 'active'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Description</label>
+                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{viewingRepo.description || 'No description provided'}</p>
+                </div>
+                
+                {/* Technologies */}
+                {(() => {
+                  const technologies = typeof viewingRepo.technologies === 'string' 
+                    ? JSON.parse(viewingRepo.technologies || '[]') 
+                    : (viewingRepo.technologies || []);
+                  
+                  return technologies.length > 0 ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Technologies</label>
+                      <div className="flex flex-wrap gap-2">
+                        {technologies.map((tech, index) => (
+                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                            <FaTag className="mr-1" />
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+                
+                {/* URLs */}
+                <div className="space-y-3">
+                  {viewingRepo.gitHubUrl && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">GitHub URL</label>
+                      <a 
+                        href={viewingRepo.gitHubUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline break-all flex items-center gap-2"
+                      >
+                        <FaGithub />
+                        {viewingRepo.gitHubUrl}
+                      </a>
+                    </div>
+                  )}
+                  {viewingRepo.downloadUrl && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Download URL</label>
+                      <a 
+                        href={viewingRepo.downloadUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline break-all flex items-center gap-2"
+                      >
+                        <FaDownload />
+                        {viewingRepo.downloadUrl}
+                      </a>
+                    </div>
+                  )}
+                  {viewingRepo.documentPreviewUrl && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Document Preview</label>
+                      <a 
+                        href={getImageUrl(viewingRepo.documentPreviewUrl)} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline break-all flex items-center gap-2"
+                      >
+                        <FaFileAlt />
+                        View Document Preview
+                      </a>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="text-center">
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Stars</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">⭐ {viewingRepo.stars || 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Forks</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">🍴 {viewingRepo.forks || 0}</p>
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Downloads</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">⬇️ {viewingRepo.downloads || 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

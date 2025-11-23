@@ -60,20 +60,16 @@ const UserRepositoriesPage = () => {
       }
       
       // Filter repositories based on access level
+      // For logged-in users: Show ALL repositories (free, premium, non-premium)
       const accessibleRepos = response.data.filter(repo => {
-        // Show public repositories to everyone
-        if (repo.accessLevel === 'public' || repo.category === 'Free') {
+        // If user is authenticated, show all repositories
+        if (isAuthenticated()) {
+          // Show all: free, premium, and non-premium
           return true;
         }
-        // Show premium to authenticated users
-        if (repo.category === 'Premium' && isAuthenticated) {
-          return true;
-        }
-        // Show admin-only to admins
-        if (repo.accessLevel === 'admin' && isAdmin()) {
-          return true;
-        }
-        return false;
+        // If not authenticated (shouldn't happen on user dashboard, but just in case)
+        // Show only non-premium (Free category but no GitHub URL)
+        return repo.category === 'Free' && !repo.gitHubUrl;
       });
       
       // Transform repositories
@@ -162,7 +158,7 @@ const UserRepositoriesPage = () => {
     }
 
     // Free items - check authentication
-    if (!isAuthenticated) {
+    if (!isAuthenticated()) {
       toast.info('Please log in to download free repositories');
       navigate('/login');
       return;
@@ -229,7 +225,7 @@ const UserRepositoriesPage = () => {
 
   // Handle rating
   const handleRate = async (repoId, newRating) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated()) {
       toast.info('Please log in to rate repositories');
       return;
     }
@@ -260,7 +256,7 @@ const UserRepositoriesPage = () => {
   const handleCommentSubmit = async (e, repoId) => {
     e.preventDefault();
     
-    if (!isAuthenticated) {
+    if (!isAuthenticated()) {
       toast.info('Please log in to comment');
       return;
     }
@@ -458,7 +454,7 @@ const UserRepositoriesPage = () => {
 
               {/* Rating */}
               <div className="mb-4">
-                {renderStars(repo.rating || 0, repo.id, isAuthenticated)}
+                {renderStars(repo.rating || 0, repo.id, isAuthenticated())}
               </div>
 
               {/* Stats */}
@@ -483,7 +479,7 @@ const UserRepositoriesPage = () => {
                   <h4 className="font-medium text-gray-800 mb-3">Comments</h4>
                   
                   {/* Comment Form */}
-                  {isAuthenticated ? (
+                  {isAuthenticated() ? (
                     <form onSubmit={(e) => handleCommentSubmit(e, repo.id)} className="mb-4">
                       <div className="flex items-start space-x-2">
                         <div className="flex-1">
@@ -554,7 +550,7 @@ const UserRepositoriesPage = () => {
                   <button
                     onClick={() => handleDownload(repo)}
                     className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors flex items-center justify-center"
-                    disabled={!isAuthenticated && repo.category !== 'Free'}
+                    disabled={!isAuthenticated() && repo.category !== 'Free'}
                   >
                     <FaDownload className="mr-1" /> 
                     {repo.gitHubUrl ? 'Download from GitHub' : 'Download'}

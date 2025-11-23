@@ -55,7 +55,7 @@ const LICENSE_TYPES = [
 const ACCESS_TYPES = [
   { id: 'free', name: 'Free' },
   { id: 'premium', name: 'Premium' },
-  { id: 'private', name: 'Private' }
+  { id: 'non-premium', name: 'Non-Premium' }
 ];
 
 const AdminRepositoriesPage = () => {
@@ -131,6 +131,7 @@ const AdminRepositoriesPage = () => {
       licenseType: 'MIT',
       version: '1.0.0',
       technologies: [],
+      accessType: 'free',
       accessLevel: 'public',
       stars: 0,
       forks: 0,
@@ -151,10 +152,20 @@ const AdminRepositoriesPage = () => {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setNewRepo(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    // If accessType is changed to 'non-premium', clear gitHubUrl (non-premium shouldn't have GitHub URL)
+    if (name === 'accessType' && value === 'non-premium') {
+      setNewRepo(prev => ({
+        ...prev,
+        [name]: value,
+        gitHubUrl: '' // Clear GitHub URL for non-premium
+      }));
+    } else {
+      setNewRepo(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   // Handle technology addition
@@ -196,6 +207,11 @@ const AdminRepositoriesPage = () => {
       documentPreviewUrl: repo.documentPreviewUrl || '',
       licenseType: repo.licenseType || 'MIT',
       version: repo.version || '1.0.0',
+      // Map Category and AccessLevel back to accessType for editing
+      // Non-premium = Free category but NO GitHub URL
+      // Free = Free category WITH GitHub URL
+      accessType: repo.category === 'Premium' ? 'premium' : 
+                   (repo.category === 'Free' && repo.gitHubUrl ? 'free' : 'non-premium'),
       accessLevel: repo.accessLevel || 'public',
       stars: repo.stars || 0,
       forks: repo.forks || 0,
@@ -244,12 +260,37 @@ const AdminRepositoriesPage = () => {
         return;
       }
       
+      // Map accessType to Category and AccessLevel
+      let category = 'Free';
+      let accessLevel = 'public';
+      let gitHubUrl = newRepo.gitHubUrl?.trim() || null;
+      
+      if (newRepo.accessType === 'free') {
+        category = 'Free';
+        accessLevel = 'public';
+        // Free must have GitHub URL
+        if (!gitHubUrl) {
+          toast.error('Free repositories must have a GitHub URL');
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (newRepo.accessType === 'premium') {
+        category = 'Premium';
+        accessLevel = 'premium';
+        // Premium can have GitHub URL (optional)
+      } else if (newRepo.accessType === 'non-premium') {
+        category = 'Free'; // Non-premium is still free category
+        accessLevel = 'public'; // But view-only for guests (handled in frontend)
+        // Non-premium should NOT have GitHub URL (this is how we distinguish it from free)
+        gitHubUrl = null;
+      }
+      
       const repoData = {
         name: newRepo.name.trim(),
         description: newRepo.description.trim(),
         domain: domainValue, // Use domain name as string
-        category: newRepo.category || 'Free',
-        gitHubUrl: newRepo.gitHubUrl?.trim() || null,
+        category: category,
+        gitHubUrl: gitHubUrl,
         downloadUrl: newRepo.downloadUrl?.trim() || null,
         documentPreviewUrl: newRepo.documentPreviewUrl?.trim() || null,
         thumbnailUrl: newRepo.thumbnailUrl?.trim() || null,
@@ -258,7 +299,7 @@ const AdminRepositoriesPage = () => {
         technologies: Array.isArray(newRepo.technologies) 
           ? JSON.stringify(newRepo.technologies) 
           : (typeof newRepo.technologies === 'string' ? newRepo.technologies : '[]'),
-        accessLevel: newRepo.accessLevel || 'public',
+        accessLevel: accessLevel,
         stars: newRepo.stars || 0,
         forks: newRepo.forks || 0,
         downloads: newRepo.downloads || 0,
@@ -800,7 +841,10 @@ const AdminRepositoriesPage = () => {
                   {/* GitHub URL */}
                   <div>
                     <label htmlFor="gitHubUrl" className="block text-sm font-medium text-gray-700">
-                      GitHub URL *
+                      GitHub URL {newRepo.accessType === 'free' ? '*' : ''}
+                      {newRepo.accessType === 'non-premium' && (
+                        <span className="text-xs text-gray-500 ml-2">(Not required for non-premium)</span>
+                      )}
                     </label>
                     <input
                       type="url"
@@ -808,10 +852,43 @@ const AdminRepositoriesPage = () => {
                       name="gitHubUrl"
                       value={newRepo.gitHubUrl || ''}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      disabled={newRepo.accessType === 'non-premium'}
+                      className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+                        newRepo.accessType === 'non-premium' ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                       placeholder="https://github.com/username/repo"
-                      required
+                      required={newRepo.accessType === 'free'}
                     />
+                    {newRepo.accessType === 'non-premium' && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Non-premium repositories don't have GitHub URLs. Use Download URL instead.
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Download URL (for non-premium) */}
+                  <div>
+                    <label htmlFor="downloadUrl" className="block text-sm font-medium text-gray-700">
+                      Download URL {newRepo.accessType === 'non-premium' ? '*' : ''}
+                      {newRepo.accessType === 'non-premium' && (
+                        <span className="text-xs text-gray-500 ml-2">(Required for non-premium)</span>
+                      )}
+                    </label>
+                    <input
+                      type="url"
+                      id="downloadUrl"
+                      name="downloadUrl"
+                      value={newRepo.downloadUrl || ''}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      placeholder="https://example.com/download"
+                      required={newRepo.accessType === 'non-premium'}
+                    />
+                    {newRepo.accessType === 'non-premium' && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        This URL will be used for downloads by registered users.
+                      </p>
+                    )}
                   </div>
                   
                   {/* Document Preview */}
@@ -1053,14 +1130,29 @@ const AdminRepositoriesPage = () => {
                     </span>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Category</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      viewingRepo.category === 'Free' ? 'bg-green-100 text-green-800' : 
-                      viewingRepo.category === 'Premium' ? 'bg-purple-100 text-purple-800' : 
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {viewingRepo.category || 'N/A'}
-                    </span>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">Access Type</label>
+                    {(() => {
+                      // Determine access type dynamically
+                      let accessType = 'N/A';
+                      let badgeClass = 'bg-gray-100 text-gray-800';
+                      
+                      if (viewingRepo.category === 'Premium') {
+                        accessType = 'Premium';
+                        badgeClass = 'bg-yellow-100 text-yellow-800';
+                      } else if (viewingRepo.category === 'Free' && viewingRepo.gitHubUrl) {
+                        accessType = 'Free';
+                        badgeClass = 'bg-green-100 text-green-800';
+                      } else if (viewingRepo.category === 'Free' && !viewingRepo.gitHubUrl) {
+                        accessType = 'Non-Premium';
+                        badgeClass = 'bg-blue-100 text-blue-800';
+                      }
+                      
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                          {accessType}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
@@ -1247,13 +1339,10 @@ const AdminRepositoriesPage = () => {
                     Domain
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
+                    Access Type
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Description
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Access Level
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -1291,28 +1380,33 @@ const AdminRepositoriesPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          repo.category === 'Free' ? 'bg-green-100 text-green-800' : 
-                          repo.category === 'Premium' ? 'bg-purple-100 text-purple-800' : 
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {repo.category || 'N/A'}
-                        </span>
+                        {(() => {
+                          // Determine access type dynamically
+                          let accessType = 'N/A';
+                          let badgeClass = 'bg-gray-100 text-gray-800';
+                          
+                          if (repo.category === 'Premium') {
+                            accessType = 'Premium';
+                            badgeClass = 'bg-yellow-100 text-yellow-800';
+                          } else if (repo.category === 'Free' && repo.gitHubUrl) {
+                            accessType = 'Free';
+                            badgeClass = 'bg-green-100 text-green-800';
+                          } else if (repo.category === 'Free' && !repo.gitHubUrl) {
+                            accessType = 'Non-Premium';
+                            badgeClass = 'bg-blue-100 text-blue-800';
+                          }
+                          
+                          return (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                              {accessType}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 max-w-xs truncate" title={repo.description}>
                           {repo.description || 'No description'}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          repo.accessLevel === 'public' ? 'bg-green-100 text-green-800' : 
-                          repo.accessLevel === 'premium' ? 'bg-yellow-100 text-yellow-800' : 
-                          repo.accessLevel === 'admin' ? 'bg-red-100 text-red-800' : 
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {repo.accessLevel ? (repo.accessLevel.charAt(0).toUpperCase() + repo.accessLevel.slice(1)) : 'Public'}
-                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
