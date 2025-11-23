@@ -27,6 +27,8 @@ namespace Wordpress_Backend.Models
         
         public string? DocumentPreviewUrl { get; set; }
         
+        public string? ThumbnailUrl { get; set; }
+        
         public string? LicenseType { get; set; }
         
         public string? Version { get; set; }

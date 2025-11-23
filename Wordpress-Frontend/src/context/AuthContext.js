@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     
     try {
       const response = await axios.post('http://localhost:5119/api/auth/refresh-token', {
-        token: refreshToken
+        Token: refreshToken  // Backend expects "Token" with capital T
       });
       
       const { token: newToken, refreshToken: newRefreshToken, user: userData } = response.data;
@@ -217,11 +217,13 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user has any of the required roles
   const hasRole = useCallback((requiredRoles) => {
-    if (!user || !user.role) return false;
+    if (!user) return false;
     if (!Array.isArray(requiredRoles)) {
       requiredRoles = [requiredRoles];
     }
-    return requiredRoles.some(role => user.role === role);
+    // Check both user.role (singular) and user.roles (array)
+    const userRoles = user.roles || (user.role ? [user.role] : []);
+    return requiredRoles.some(role => userRoles.includes(role));
   }, [user]);
 
   // Check if user is authenticated

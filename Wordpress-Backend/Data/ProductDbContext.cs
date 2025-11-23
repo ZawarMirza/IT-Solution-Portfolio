@@ -28,10 +28,13 @@ namespace ProductAPI.Data
                 entity.Property(u => u.FirstName).HasMaxLength(100);
                 entity.Property(u => u.LastName).HasMaxLength(100);
                 entity.Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(u => u.VerificationTokenHash).HasMaxLength(256);
-                entity.Property(u => u.VerificationTokenExpiresAt);
-                entity.Property(u => u.EmailVerifiedAt);
-                entity.Property(u => u.LastVerificationEmailSentAt);
+            entity.Property(u => u.VerificationTokenHash).HasMaxLength(256);
+            entity.Property(u => u.VerificationTokenExpiresAt);
+            entity.Property(u => u.EmailVerifiedAt);
+            entity.Property(u => u.LastVerificationEmailSentAt);
+            entity.Property(u => u.BlockReason).HasMaxLength(500);
+            entity.Property(u => u.BlockedAt);
+            entity.Property(u => u.BlockedBy).HasMaxLength(450);
             });
 
             // Configure Product

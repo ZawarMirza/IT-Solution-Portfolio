@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, ROLES } from '../../context';
+import { parseBackendErrors } from '../../utils/errorHandler';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -143,10 +144,22 @@ const SignupPage = () => {
       }
     } catch (error) {
       console.error('Registration failed:', error);
-      setErrors({
-        ...errors,
-        form: error.message || 'Registration failed. Please try again.'
-      });
+      
+      // Parse backend validation errors
+      const { fieldErrors, generalMessage } = parseBackendErrors(error.response);
+      
+      // Set field-specific errors
+      const newErrors = { ...fieldErrors };
+      
+      // Set general form error if no field errors
+      if (Object.keys(fieldErrors).length === 0) {
+        newErrors.form = generalMessage || error.message || 'Registration failed. Please try again.';
+      } else {
+        // Clear form error if we have field errors
+        newErrors.form = undefined;
+      }
+      
+      setErrors(newErrors);
     } finally {
       setIsLoading(false);
     }

@@ -98,7 +98,7 @@ namespace ProductAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         [Consumes("multipart/form-data", "application/x-www-form-urlencoded", "application/json")]
         public async Task<ActionResult<Product>> Create([FromForm] ProductCreateDto dto)
         {
@@ -167,7 +167,7 @@ namespace ProductAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         [Consumes("multipart/form-data", "application/x-www-form-urlencoded", "application/json")]
         public async Task<IActionResult> Update(int id, [FromForm] ProductCreateDto dto)
         {

@@ -20,6 +20,12 @@ namespace ProductAPI.Models
         
         public bool IsBlocked { get; set; } = false;
         
+        public string? BlockReason { get; set; }
+        
+        public DateTime? BlockedAt { get; set; }
+        
+        public string? BlockedBy { get; set; } // Admin user ID who blocked this user
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public DateTime? UpdatedAt { get; set; }

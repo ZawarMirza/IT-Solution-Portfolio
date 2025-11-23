@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, ROLES } from '../../context';
+import { parseBackendErrors, getErrorMessage } from '../../utils/errorHandler';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -43,7 +44,19 @@ const LoginPage = () => {
       await login({ email, password, rememberMe });
     } catch (err) {
       console.error('Login failed:', err);
-      setError(err.message || 'Invalid email or password');
+      
+      // Parse backend validation errors
+      const { fieldErrors, generalMessage } = parseBackendErrors(err.response);
+      
+      // Set error message (prefer field errors, then general message, then default)
+      if (fieldErrors.email) {
+        setError(fieldErrors.email);
+      } else if (fieldErrors.password) {
+        setError(fieldErrors.password);
+      } else {
+        setError(generalMessage || getErrorMessage(err) || 'Invalid email or password');
+      }
+      
       setIsLoading(false);
     }
   };

@@ -100,13 +100,23 @@ namespace ProductAPI.Data
                 {
                     // Display existing super admin credentials
                     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                    
+                    // Ensure admin user has Admin role (in case it was removed)
+                    var userRoles = await userManager.GetRolesAsync(adminUser);
+                    if (!userRoles.Contains("Admin"))
+                    {
+                        await userManager.AddToRoleAsync(adminUser, "Admin");
+                        logger.LogInformation("Added Admin role to existing admin user");
+                    }
+                    
+                    var currentRoles = await userManager.GetRolesAsync(adminUser);
                     Console.WriteLine("");
                     Console.WriteLine("==========================================");
                     Console.WriteLine("SUPER ADMIN CREDENTIALS");
                     Console.WriteLine("==========================================");
                     Console.WriteLine($"Email: {adminEmail}");
                     Console.WriteLine($"Password: {adminPassword}");
-                    Console.WriteLine("Role: Admin");
+                    Console.WriteLine($"Roles: {string.Join(", ", currentRoles)}");
                     Console.WriteLine("Status: Already exists");
                     Console.WriteLine("==========================================");
                     Console.WriteLine("⚠️  IMPORTANT: Change this password in production!");
@@ -120,7 +130,7 @@ namespace ProductAPI.Data
                     logger.LogInformation("==========================================");
                     logger.LogInformation("Email: {Email}", adminEmail);
                     logger.LogInformation("Password: {Password}", adminPassword);
-                    logger.LogInformation("Role: Admin");
+                    logger.LogInformation("Roles: {Roles}", string.Join(", ", currentRoles));
                     logger.LogInformation("Status: Already exists");
                     logger.LogInformation("==========================================");
                     logger.LogInformation("⚠️  IMPORTANT: Change this password in production!");

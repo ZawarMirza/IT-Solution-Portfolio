@@ -48,12 +48,12 @@ namespace Wordpress_Backend.Controllers
 
         // POST: api/Publications
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         public async Task<ActionResult<Publication>> PostPublication(Publication publication)
         {
             publication.CreatedAt = DateTime.UtcNow;
             publication.UpdatedAt = DateTime.UtcNow;
-            publication.CreatedBy = User.Identity?.Name;
+            publication.CreatedBy = User?.Identity?.Name ?? "System";
 
             _context.Publications.Add(publication);
             await _context.SaveChangesAsync();
@@ -63,7 +63,7 @@ namespace Wordpress_Backend.Controllers
 
         // PUT: api/Publications/5
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> PutPublication(int id, Publication publication)
         {
             if (id != publication.Id)
@@ -95,7 +95,7 @@ namespace Wordpress_Backend.Controllers
 
         // DELETE: api/Publications/5
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> DeletePublication(int id)
         {
             var publication = await _context.Publications.FindAsync(id);
@@ -141,7 +141,7 @@ namespace Wordpress_Backend.Controllers
 
         // POST: api/Publications/{id}/files
         [HttpPost("{id}/files")]
-        [Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadFiles(int id, [FromForm] PublicationFilesDto files)
         {

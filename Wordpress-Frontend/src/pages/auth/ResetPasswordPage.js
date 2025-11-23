@@ -1,16 +1,26 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { parseBackendErrors, getErrorMessage } from '../../utils/errorHandler';
 
 const ResetPasswordPage = () => {
-  const { token } = useParams();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '' });
+  const [userEmail, setUserEmail] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!token) {
+      setError('Invalid reset link. No token provided.');
+    }
+  }, [token]);
 
   const validatePassword = (value) => {
     // Password strength calculation
@@ -49,6 +59,11 @@ const ResetPasswordPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!userEmail) {
+      setError('Please enter your email address');
+      return;
+    }
+    
     if (!password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
@@ -63,25 +78,70 @@ const ResetPasswordPage = () => {
       setError('Please choose a stronger password');
       return;
     }
-    
+
+    if (!token) {
+      setError('Invalid reset link. No token provided.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     
     try {
-      await axios.post('http://localhost:5119/api/auth/reset-password', {
-        token,
-        newPassword: password
+      // Log the token for debugging
+      console.log('=== Password Reset Debug ===');
+      console.log('Token from URL (first 100 chars):', token?.substring(0, 100));
+      console.log('Token length:', token?.length || 0);
+      console.log('Token contains +:', token?.includes('+') || false);
+      console.log('Token contains /:', token?.includes('/') || false);
+      console.log('Token contains =:', token?.includes('=') || false);
+      console.log('Full URL:', window.location.href);
+      console.log('Email:', userEmail);
+      
+      // Send data in correct format (PascalCase for C#)
+      // Send the token as-is - ASP.NET Identity expects the raw token
+      // The backend will handle any additional decoding if needed
+      console.log('Sending token to backend (length:', token?.length || 0, ')');
+      
+      const response = await axios.post('http://localhost:5119/api/auth/reset-password', {
+        Email: userEmail || '',
+        Token: token,
+        NewPassword: password
       });
       
-      setMessage('Your password has been reset successfully!');
+      setMessage(response.data?.message || 'Your password has been reset successfully!');
       setTimeout(() => {
         navigate('/login', { 
           state: { message: 'Password reset successful! Please log in with your new password.' } 
         });
       }, 3000);
     } catch (err) {
-      console.error('Password reset failed:', err);
-      setError(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
+      console.error('=== Password Reset Error ===');
+      console.error('Error object:', err);
+      console.error('Error response:', err.response);
+      console.error('Error response data:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      console.error('Error message:', err.message);
+      console.error('Request payload:', { Email: userEmail, Token: token?.substring(0, 50) + '...', NewPassword: '***' });
+      
+      // Parse backend validation errors
+      const { fieldErrors: errors, generalMessage, generalErrors } = parseBackendErrors(err.response);
+      setFieldErrors(errors);
+      
+      // Set error message (prefer field-specific errors, then general message)
+      if (errors.email) {
+        setError(errors.email);
+      } else if (errors.password) {
+        setError(errors.password);
+      } else if (errors.token) {
+        setError(errors.token);
+      } else {
+        setError(generalMessage || getErrorMessage(err) || 'Failed to reset password. The link may have expired.');
+      }
+      
+      console.error('Parsed field errors:', errors);
+      console.error('General message:', generalMessage);
+      console.error('General errors:', generalErrors);
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +186,21 @@ const ResetPasswordPage = () => {
                 </div>
               </div>
             </div>
+          ) : !token ? (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-red-800">
+                    Invalid reset link. Please request a new password reset.
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
@@ -146,8 +221,38 @@ const ResetPasswordPage = () => {
               )}
               
               <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={userEmail}
+                    onChange={(e) => {
+                      setUserEmail(e.target.value);
+                      // Clear error when user starts typing
+                      if (fieldErrors.email) {
+                        setFieldErrors(prev => ({ ...prev, email: undefined }));
+                      }
+                    }}
+                    className={`appearance-none block w-full px-3 py-2 border ${
+                      fieldErrors.email ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    placeholder="Enter your email address"
+                  />
+                  {fieldErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  New Password
+                  New Password <span className="text-red-500">*</span>
                 </label>
                 <div className="mt-1 relative">
                   <input
@@ -158,7 +263,9 @@ const ResetPasswordPage = () => {
                     required
                     value={password}
                     onChange={handlePasswordChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className={`appearance-none block w-full px-3 py-2 border ${
+                      fieldErrors.password || fieldErrors.newPassword ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                   />
                 </div>
                 {password && (
@@ -174,6 +281,11 @@ const ResetPasswordPage = () => {
                     </p>
                   </div>
                 )}
+                {(fieldErrors.password || fieldErrors.newPassword) && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.password || fieldErrors.newPassword}
+                  </p>
+                )}
                 <p className="mt-1 text-xs text-gray-500">
                   Use at least 8 characters, including uppercase, lowercase, numbers, and symbols.
                 </p>
@@ -181,7 +293,7 @@ const ResetPasswordPage = () => {
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  Confirm New Password
+                  Confirm New Password <span className="text-red-500">*</span>
                 </label>
                 <div className="mt-1">
                   <input
@@ -191,9 +303,20 @@ const ResetPasswordPage = () => {
                     autoComplete="new-password"
                     required
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      // Clear error when user starts typing
+                      if (fieldErrors.confirmPassword) {
+                        setFieldErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                      }
+                    }}
+                    className={`appearance-none block w-full px-3 py-2 border ${
+                      fieldErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                   />
+                  {fieldErrors.confirmPassword && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+                  )}
                 </div>
               </div>
 

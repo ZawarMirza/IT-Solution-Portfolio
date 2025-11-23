@@ -23,14 +23,24 @@ const AdminDashboardPage = () => {
                 const domainsResponse = await axios.get('http://localhost:5119/api/domains');
                 const totalDomains = domainsResponse.data.length;
 
-                // Fetch products count using the specific count endpoint
+                // Fetch products - try count endpoint first, fallback to getAll
                 let totalProducts = 0;
+                let allProducts = [];
                 try {
                     const countResponse = await axios.get('http://localhost:5119/api/products/count');
-                    console.log('Products count response:', countResponse.data);
                     totalProducts = countResponse.data;
+                    console.log('Products count from endpoint:', totalProducts);
                 } catch (err) {
-                    console.error('Products count endpoint error:', err.message, err.response ? err.response.data : 'No response data');
+                    console.warn('Products count endpoint not available, fetching all products:', err.message);
+                    try {
+                        const productsResponse = await axios.get('http://localhost:5119/api/products');
+                        allProducts = productsResponse.data || [];
+                        totalProducts = allProducts.length;
+                        console.log('Products count from getAll:', totalProducts);
+                    } catch (productsErr) {
+                        console.error('Error fetching products:', productsErr);
+                        totalProducts = 0;
+                    }
                 }
 
                 setStats({ totalUsers, totalProducts, totalDomains });
@@ -44,22 +54,43 @@ const AdminDashboardPage = () => {
                     date: user.createdAt || 'N/A'
                 })));
 
-                // Set recent products if available using the specific recent endpoint
+                // Fetch recent products - try recent endpoint first, fallback to getAll
                 if (totalProducts > 0) {
                     try {
                         const recentResponse = await axios.get('http://localhost:5119/api/products/recent?limit=3');
-                        console.log('Recent products response:', recentResponse.data);
-                        const sortedProducts = recentResponse.data.sort((a, b) => new Date(b.createdAt || '1970-01-01') - new Date(a.createdAt || '1970-01-01'));
-                        setRecentProducts(sortedProducts.map(product => ({
+                        console.log('Recent products from endpoint:', recentResponse.data);
+                        const recentProductsData = recentResponse.data || [];
+                        setRecentProducts(recentProductsData.map(product => ({
                             id: product.id,
                             title: product.title || 'Untitled Product',
-                            author: product.createdBy || 'N/A',
-                            date: product.createdAt || 'N/A'
+                            author: product.createdByUsername || product.createdBy || 'N/A',
+                            domain: product.domain || 'N/A',
+                            date: product.createdAt || 'N/A',
+                            image: product.image || null
                         })));
                     } catch (err) {
-                        console.error('Error fetching recent products:', err.message, err.response ? err.response.data : 'No response data');
-                        setRecentProducts([]);
-                        // Do not set general error to avoid overriding dashboard data display
+                        console.warn('Recent products endpoint not available, using getAll:', err.message);
+                        // Fallback: fetch all products and get the 3 most recent
+                        try {
+                            if (allProducts.length === 0) {
+                                const productsResponse = await axios.get('http://localhost:5119/api/products');
+                                allProducts = productsResponse.data || [];
+                            }
+                            const sortedProducts = allProducts
+                                .sort((a, b) => new Date(b.createdAt || '1970-01-01') - new Date(a.createdAt || '1970-01-01'))
+                                .slice(0, 3);
+                            setRecentProducts(sortedProducts.map(product => ({
+                                id: product.id,
+                                title: product.title || 'Untitled Product',
+                                author: product.createdByUsername || product.createdBy || 'N/A',
+                                domain: product.domain || 'N/A',
+                                date: product.createdAt || 'N/A',
+                                image: product.image || null
+                            })));
+                        } catch (fallbackErr) {
+                            console.error('Error fetching products for recent list:', fallbackErr);
+                            setRecentProducts([]);
+                        }
                     }
                 } else {
                     setRecentProducts([]);
@@ -149,17 +180,38 @@ const AdminDashboardPage = () => {
                     <div className="space-y-4">
                         {recentProducts.length > 0 ? (
                             recentProducts.map(product => (
-                                <div key={product.id} className="border-b border-gray-100 dark:border-gray-700 pb-2">
-                                    <p className="text-gray-800 dark:text-gray-200 font-medium">{product.title}</p>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm">By: {product.author}</p>
-                                    <p className="text-gray-400 dark:text-gray-500 text-xs">Created: {product.date !== 'N/A' ? new Date(product.date).toLocaleDateString() : 'N/A'}</p>
+                                <div key={product.id} className="border-b border-gray-100 dark:border-gray-700 pb-3 last:border-b-0">
+                                    <div className="flex items-start gap-3">
+                                        {product.image && (
+                                            <img 
+                                                src={product.image.startsWith('http') ? product.image : `http://localhost:5119${product.image}`}
+                                                alt={product.title}
+                                                className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                            />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-gray-800 dark:text-gray-200 font-medium truncate">{product.title}</p>
+                                            <p className="text-gray-500 dark:text-gray-400 text-sm">Domain: {product.domain}</p>
+                                            <p className="text-gray-500 dark:text-gray-400 text-sm">By: {product.author}</p>
+                                            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
+                                                Created: {product.date !== 'N/A' ? new Date(product.date).toLocaleDateString() : 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))
                         ) : (
-                            <p className="text-gray-500 dark:text-gray-400">No products available at the moment. The endpoint might not be accessible.</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                                {stats.totalProducts === 0 
+                                    ? 'No products available. Create your first product!' 
+                                    : 'Loading recent products...'}
+                            </p>
                         )}
                     </div>
-                    <Link to="/admin/products" className="text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 mt-4 block text-center transition duration-200 ease-in-out">See All Products</Link>
+                    <Link to="/admin/products" className="text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 mt-4 block text-center transition duration-200 ease-in-out">
+                        See All Products ({stats.totalProducts})
+                    </Link>
                 </div>
             </div>
         </div>

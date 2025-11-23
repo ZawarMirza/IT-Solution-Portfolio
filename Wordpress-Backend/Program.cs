@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ProductAPI.Models;
 using Wordpress_Backend.Services.Email;
 using System.Linq;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +29,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Configure JSON serialization to handle camelCase from frontend
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -68,7 +75,10 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidIssuer = builder.Configuration["Jwt:ValidIssuer"] ?? throw new InvalidOperationException("JWT ValidIssuer is not configured"),
         ValidAudience = builder.Configuration["Jwt:ValidAudience"] ?? throw new InvalidOperationException("JWT ValidAudience is not configured"),
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        // Configure role claim type to match what Identity uses
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+        NameClaimType = System.Security.Claims.ClaimTypes.Name
     };
 });
 
@@ -85,6 +95,8 @@ builder.Services.AddAuthorization(options =>
 // Add Email Service
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
+var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3000";
+builder.Services.AddSingleton<EmailTemplateService>(sp => new EmailTemplateService(frontendUrl));
 
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -116,6 +128,7 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ProductDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
         
         // Ensure database is created (this will create tables if they don't exist)
         await context.Database.EnsureCreatedAsync();
@@ -163,12 +176,57 @@ using (var scope = app.Services.CreateScope())
                 await command.ExecuteNonQueryAsync();
             }
             
+            // Check and add BlockReason
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='BlockReason'";
+            var blockReasonExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (blockReasonExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN BlockReason TEXT";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Added BlockReason column to AspNetUsers table");
+            }
+            
+            // Check and add BlockedAt
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='BlockedAt'";
+            var blockedAtExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (blockedAtExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN BlockedAt TEXT";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Added BlockedAt column to AspNetUsers table");
+            }
+            
+            // Check and add BlockedBy
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name='BlockedBy'";
+            var blockedByExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (blockedByExists == 0)
+            {
+                command.CommandText = "ALTER TABLE AspNetUsers ADD COLUMN BlockedBy TEXT";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Added BlockedBy column to AspNetUsers table");
+            }
+            
+            // Check and add ThumbnailUrl to Repositories table if it exists
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Repositories'";
+            var reposTableExists = await command.ExecuteScalarAsync();
+            if (reposTableExists != null)
+            {
+                command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Repositories') WHERE name='ThumbnailUrl'";
+                var thumbnailExists = Convert.ToInt32(await command.ExecuteScalarAsync());
+                if (thumbnailExists == 0)
+                {
+                    command.CommandText = "ALTER TABLE Repositories ADD COLUMN ThumbnailUrl TEXT";
+                    await command.ExecuteNonQueryAsync();
+                    logger.LogInformation("Added ThumbnailUrl column to Repositories table");
+                    Console.WriteLine("[Database Init] Added ThumbnailUrl column to Repositories table");
+                }
+            }
+            
             await connection.CloseAsync();
         }
         catch (Exception columnEx)
         {
             // If column addition fails, log but continue
-            var logger = services.GetRequiredService<ILogger<Program>>();
             logger.LogWarning(columnEx, "Warning adding verification columns (they may already exist)");
         }
         
@@ -184,7 +242,6 @@ using (var scope = app.Services.CreateScope())
         catch (Exception migrationEx)
         {
             // If migration fails, log but continue (database might already be up to date)
-            var logger = services.GetRequiredService<ILogger<Program>>();
             logger.LogWarning(migrationEx, "Migration warning (this is usually safe to ignore if database is already up to date)");
         }
         

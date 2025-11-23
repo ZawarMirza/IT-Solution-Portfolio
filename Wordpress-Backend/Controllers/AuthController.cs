@@ -252,12 +252,18 @@ namespace Wordpress_Backend.Controllers
             var userClaims = await _userManager.GetClaimsAsync(user);
             var roles = await _userManager.GetRolesAsync(user);
             
+            // Log roles for debugging
+            _logger.LogInformation("User {Email} has roles: {Roles}", user.Email, string.Join(", ", roles));
+            Console.WriteLine($"[Login] User {user.Email} has roles: {string.Join(", ", roles)}");
+            
             var roleClaims = new List<Claim>();
             var permissionClaims = new List<Claim>();
 
             foreach (var role in roles)
             {
                 roleClaims.Add(new Claim(ClaimTypes.Role, role));
+                _logger.LogInformation("Added role claim: {Role}", role);
+                Console.WriteLine($"[Login] Added role claim: {role}");
             }
 
             var claims = new[]
@@ -271,6 +277,14 @@ namespace Wordpress_Backend.Controllers
             .Union(roleClaims)
             .Union(permissionClaims);
 
+            // Log all claims for debugging
+            var allClaimTypes = claims.Select(c => c.Type).ToList();
+            _logger.LogInformation("JWT Token will contain claim types: {ClaimTypes}", string.Join(", ", allClaimTypes));
+            Console.WriteLine($"[Login] JWT Token will contain claim types: {string.Join(", ", allClaimTypes)}");
+            var roleClaimValues = claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+            _logger.LogInformation("Role claims in token: {RoleClaims}", string.Join(", ", roleClaimValues));
+            Console.WriteLine($"[Login] Role claims in token: {string.Join(", ", roleClaimValues)}");
+
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "ThisIsASecretKeyForJwtTokenGeneration1234567890"));
 
             var token = new JwtSecurityToken(
@@ -283,6 +297,18 @@ namespace Wordpress_Backend.Controllers
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
+            // Generate and store refresh token
+            var refreshToken = GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7); // 7 days expiry for refresh token
+            var updateResult = await _userManager.UpdateAsync(user);
+            
+            if (!updateResult.Succeeded)
+            {
+                _logger.LogError("Failed to update refresh token for user {UserId}", user.Id);
+                // Continue anyway - the login should still succeed
+            }
+
             _logger.LogInformation("JWT Token generated for user {UserId}", user.Id);
             _logger.LogDebug("JWT Token: {Token}", tokenString);
 
@@ -292,7 +318,7 @@ namespace Wordpress_Backend.Controllers
             return Ok(new 
             { 
                 token = tokenString,
-                refreshToken = tokenString, // For now, using same token as refresh token
+                refreshToken = refreshToken,
                 user = new 
                 {
                     id = user.Id,
@@ -471,17 +497,24 @@ namespace Wordpress_Backend.Controllers
             foreach (var role in roles)
             {
                 authClaims.Add(new Claim(ClaimTypes.Role, role));
+                _logger.LogInformation("Added role claim to token: {Role} for user {Email}", role, user.Email);
             }
 
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+            // Use the same configuration keys as the Login method (Jwt, not JWT)
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                _configuration["Jwt:Key"] ?? "ThisIsAStrongAndSecureSecretKeyForJWTTokens-ChangeMeInProduction"));
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["JWT:ValidIssuer"],
-                audience: _configuration["JWT:ValidAudience"],
-                expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JWT:TokenValidityInMinutes"])),
+                issuer: _configuration["Jwt:ValidIssuer"] ?? "WordpressBackend",
+                audience: _configuration["Jwt:ValidAudience"] ?? "WordpressFrontend",
+                expires: DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpireInMinutes", 1440)),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
+
+            // Log role claims for debugging
+            var roleClaimValues = authClaims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+            _logger.LogInformation("Generated JWT token for user {Email} with roles: {Roles}", user.Email, string.Join(", ", roleClaimValues));
 
             return token;
         }
@@ -1162,6 +1195,7 @@ namespace Wordpress_Backend.Controllers
 
         // POST: api/auth/forgot-password
         [HttpPost("forgot-password")]
+        [AllowAnonymous] // Allow unauthenticated access for password reset
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordModel model)
         {
             if (!ModelState.IsValid)
@@ -1171,37 +1205,183 @@ namespace Wordpress_Backend.Controllers
             if (user == null)
             {
                 // Don't reveal that the user does not exist
+                _logger.LogInformation("Password reset requested for non-existent email: {Email}", model.Email);
                 return Ok(new { message = "If an account exists with this email, you will receive a password reset link." });
             }
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            // Generate password reset token
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
             
-            // In a real application, you would send an email here
-            // For now, we'll just log the token (remove this in production)
-            _logger.LogInformation("Password reset token for {Email}: {Token}", user.Email, token);
+            // Encode token for URL - use query parameter
+            var encodedToken = WebUtility.UrlEncode(resetToken);
+            var resetLink = $"{_emailTemplateService.BaseUrl}/reset-password?token={encodedToken}";
+            
+            // Send password reset email
+            try
+            {
+                _logger.LogInformation("Attempting to send password reset email to {Email}", user.Email);
+                _logger.LogInformation("Reset link: {Link}", resetLink);
+                
+                var emailBody = _emailTemplateService.GeneratePasswordResetEmail(user.FirstName ?? "User", resetLink);
+                await _emailSender.SendEmailAsync(
+                    user.Email ?? string.Empty,
+                    "Reset Your Password - IT Solution Portfolio",
+                    emailBody
+                );
+                _logger.LogInformation("✓ Password reset email sent successfully to {Email}", user.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "✗ Failed to send password reset email to {Email}. Error: {Error}", 
+                    user.Email, ex.Message);
+                _logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
+                // Don't fail the request if email fails, but log it
+                // In production, you might want to queue the email for retry
+            }
             
             return Ok(new { message = "If an account exists with this email, you will receive a password reset link." });
         }
 
         // POST: api/auth/reset-password
         [HttpPost("reset-password")]
+        [AllowAnonymous] // Allow unauthenticated access for password reset
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                _logger.LogWarning("Reset password validation failed: {Errors}", string.Join(", ", errors));
+                return BadRequest(new { 
+                    message = "Invalid reset request. Please check your input.",
+                    errors = errors.ToArray()
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Token))
+            {
+                _logger.LogWarning("Reset password called with empty token");
+                return BadRequest(new { message = "Reset token is required." });
+            }
+
+            // Build list of token variations to try (same approach as email verification)
+            var tokensToTry = new List<string> { model.Token };
+            var decodedToken = model.Token;
+            
+            // Try decoding once
+            try
+            {
+                var onceDecoded = WebUtility.UrlDecode(model.Token);
+                if (onceDecoded != model.Token && !tokensToTry.Contains(onceDecoded))
+                {
+                    tokensToTry.Add(onceDecoded);
+                    decodedToken = onceDecoded;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during token decoding attempt");
+            }
+            
+            // Try decoding twice (for double-encoded tokens)
+            try
+            {
+                var twiceDecoded = WebUtility.UrlDecode(decodedToken);
+                if (twiceDecoded != decodedToken && !tokensToTry.Contains(twiceDecoded))
+                {
+                    tokensToTry.Add(twiceDecoded);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during second token decoding attempt");
+            }
+            
+            // Also try URL encoding the token in case it needs to be re-encoded
+            try
+            {
+                var reEncoded = WebUtility.UrlEncode(model.Token);
+                if (reEncoded != model.Token && !tokensToTry.Contains(reEncoded))
+                {
+                    tokensToTry.Add(reEncoded);
+                    // And decode it back
+                    var reDecoded = WebUtility.UrlDecode(reEncoded);
+                    if (reDecoded != model.Token && !tokensToTry.Contains(reDecoded))
+                    {
+                        tokensToTry.Add(reDecoded);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error during token re-encoding attempt");
+            }
+            
+            _logger.LogInformation("Password reset request for email: {Email}, Token length: {Length}, will try {Count} variations", 
+                model.Email, model.Token?.Length ?? 0, tokensToTry.Count);
+            _logger.LogInformation("Token sample (first 50 chars): {Sample}", 
+                model.Token?.Length > 50 ? model.Token.Substring(0, 50) : model.Token);
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
-                return BadRequest(new { message = "Invalid reset request" });
-
-            var result = await _userManager.ResetPasswordAsync(user, model.Token, model.NewPassword);
-            if (result.Succeeded)
             {
-                return Ok(new { message = "Password reset successfully" });
+                _logger.LogWarning("Password reset attempted for non-existent user: {Email}", model.Email);
+                return BadRequest(new { message = "Invalid reset request. User not found." });
             }
 
-            var errors = result.Errors.Select(e => e.Description).ToArray();
-            return BadRequest(new { message = "Password reset failed", errors });
+            // Try each token variation until one works
+            IdentityResult? resetResult = null;
+            string? successfulToken = null;
+            
+            foreach (var tokenToTry in tokensToTry)
+            {
+                _logger.LogInformation("Attempting password reset with token variation (length: {Length})", 
+                    tokenToTry?.Length ?? 0);
+                
+                // Log token sample for debugging
+                _logger.LogInformation("Token sample (first 50): {Sample}, (last 50): {LastSample}", 
+                    tokenToTry?.Length > 50 ? tokenToTry.Substring(0, 50) : tokenToTry,
+                    tokenToTry?.Length > 50 ? tokenToTry.Substring(tokenToTry.Length - 50) : "");
+                
+                // Log user security stamp (ASP.NET Identity uses this for token validation)
+                _logger.LogInformation("User SecurityStamp: {SecurityStamp}", user.SecurityStamp);
+                
+                resetResult = await _userManager.ResetPasswordAsync(user, tokenToTry, model.NewPassword);
+                if (resetResult.Succeeded)
+                {
+                    successfulToken = tokenToTry;
+                    _logger.LogInformation("✓ Password reset successful for user {Email} with token variation", user.Email);
+                    break;
+                }
+                else
+                {
+                    var errorMessages = string.Join(", ", resetResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("Token variation failed for user {Email}: {Errors}", 
+                        user.Email, errorMessages);
+                }
+            }
+            
+            if (resetResult != null && resetResult.Succeeded)
+            {
+                _logger.LogInformation("Password reset successful for user {Email}", user.Email);
+                
+                // Update security stamp to invalidate existing tokens
+                await _userManager.UpdateSecurityStampAsync(user);
+                
+                return Ok(new { 
+                    message = "Password reset successfully! You can now log in with your new password.",
+                    success = true
+                });
+            }
+
+            var finalErrorMessages = resetResult?.Errors.Select(e => e.Description).ToArray() ?? new[] { "Invalid token" };
+            _logger.LogWarning("Password reset failed for user {Email} after trying {Count} token variations. Errors: {Errors}", 
+                user.Email, tokensToTry.Count, string.Join(", ", finalErrorMessages));
+            
+            return BadRequest(new { 
+                message = "Password reset failed. The link may have expired or is invalid.",
+                errorType = "reset_failed",
+                errors = finalErrorMessages
+            });
         }
 
         // POST: api/auth/populate-admin
@@ -1319,15 +1499,15 @@ namespace Wordpress_Backend.Controllers
 
         public class ResetPasswordModel
         {
-            [Required]
-            [EmailAddress]
+            [Required(ErrorMessage = "Email is required")]
+            [EmailAddress(ErrorMessage = "Invalid email address")]
             public string Email { get; set; } = string.Empty;
             
-            [Required]
+            [Required(ErrorMessage = "Reset token is required")]
             public string Token { get; set; } = string.Empty;
             
-            [Required]
-            [StringLength(100, MinimumLength = 6)]
+            [Required(ErrorMessage = "New password is required")]
+            [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters long")]
             public string NewPassword { get; set; } = string.Empty;
         }
     }

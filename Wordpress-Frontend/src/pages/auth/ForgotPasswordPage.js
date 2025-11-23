@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { parseBackendErrors, getErrorMessage } from '../../utils/errorHandler';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -20,14 +22,22 @@ const ForgotPasswordPage = () => {
     setError('');
     
     try {
-      await axios.post('http://localhost:5119/api/auth/forgot-password', { email });
-      setMessage('If an account exists with this email, you will receive a password reset link.');
+      // Send email in correct format (PascalCase for C#)
+      const response = await axios.post('http://localhost:5119/api/auth/forgot-password', { 
+        Email: email 
+      });
+      
+      setMessage(response.data?.message || 'If an account exists with this email, you will receive a password reset link.');
       setTimeout(() => navigate('/login', { 
         state: { message: 'Password reset link sent to your email!' } 
       }), 3000);
     } catch (err) {
       console.error('Password reset request failed:', err);
-      setError(err.response?.data?.message || 'Failed to process your request. Please try again.');
+      
+      // Parse backend validation errors
+      const { fieldErrors: errors, generalMessage } = parseBackendErrors(err.response);
+      setFieldErrors(errors);
+      setError(generalMessage || getErrorMessage(err) || 'Failed to process your request. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -92,9 +102,23 @@ const ForgotPasswordPage = () => {
                     autoComplete="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      // Clear error when user starts typing
+                      if (fieldErrors.email || error) {
+                        setFieldErrors({});
+                        setError('');
+                      }
+                    }}
+                    className={`appearance-none block w-full px-3 py-2 border ${
+                      fieldErrors.email || error ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                   />
+                  {(fieldErrors.email || (error && !fieldErrors.email)) && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.email || error}
+                    </p>
+                  )}
                 </div>
               </div>
 
