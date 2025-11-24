@@ -63,11 +63,6 @@ function AdminSidebar() {
       icon: '🔗'
     },
     {
-      name: 'Content',
-      path: '/admin/content',
-      icon: '📝'
-    },
-    {
       name: 'Settings',
       path: '/admin/settings',
       icon: '⚙️'
