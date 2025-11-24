@@ -49,7 +49,7 @@ function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [selectedDomainProduct, setSelectedDomainProduct] = useState('All');
   
-  // Solutions state (using products for now)
+  // Solutions state
   const [solutions, setSolutions] = useState([]);
   const [selectedDomainSolution, setSelectedDomainSolution] = useState('All');
   
@@ -119,19 +119,42 @@ function ProductsPage() {
     }
   }, [activeTab]);
 
-  // Fetch solutions (using products for now)
+  const normalizeArray = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (err) {
+        // ignore parse error
+      }
+      return value.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  // Fetch solutions
   useEffect(() => {
     const fetchSolutions = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await api.get('/products');
+        const response = await api.get('/Solutions');
         
         if (!response.data || !Array.isArray(response.data)) {
           throw new Error('Invalid response format');
         }
         
-        setSolutions(response.data);
+        const formatted = response.data.map((solution) => ({
+          ...solution,
+          domainName: solution.domain?.name || solution.domainName || 'General',
+          tags: normalizeArray(solution.tags),
+          features: normalizeArray(solution.features),
+          imageUrl: solution.imageUrl || solution.image
+        }));
+        
+        setSolutions(formatted);
       } catch (err) {
         console.error('Error fetching solutions:', err);
         setError('Failed to load solutions. Please try again.');
@@ -248,8 +271,9 @@ function ProductsPage() {
   // Filter solutions by domain
   const filteredSolutions = useMemo(() => {
     return solutions.filter((solution) => {
-      const matchesDomain = selectedDomainSolution === 'All' || solution.domain?.name === selectedDomainSolution;
-      return matchesDomain;
+      if (selectedDomainSolution === 'All') return true;
+      const domainName = solution.domain?.name || solution.domainName;
+      return domainName === selectedDomainSolution;
     });
   }, [solutions, selectedDomainSolution]);
 
@@ -747,40 +771,81 @@ function ProductsPage() {
             {filteredSolutions.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 dark:text-gray-400">No solutions found.</p>
-            </div>
-          ) : (
+              </div>
+            ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSolutions.map((solution) => (
-                    <div
-                      key={solution.id}
-                      className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-                    >
-                      {solution.image && (
-                        <div className="h-48 overflow-hidden bg-gray-200 dark:bg-gray-700">
-                          <img
-                            src={getImageUrl(solution.image)}
-                            alt={solution.title}
-                            className="w-full h-full object-cover"
-                          />
-                </div>
-                      )}
-                      <div className="p-6">
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
-                          {solution.title}
-                        </h3>
-                        {solution.caption && (
-                          <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
-                            {solution.caption}
-                          </p>
-                        )}
-                        {solution.domain && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            {solution.domain.name}
-                          </span>
+                  <div
+                    key={solution.id}
+                    className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col border border-gray-100 dark:border-gray-700"
+                  >
+                    {solution.imageUrl && (
+                      <div className="h-48 overflow-hidden bg-gray-200 dark:bg-gray-700">
+                        <img
+                          src={getImageUrl(solution.imageUrl)}
+                          alt={solution.title}
+                          className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+                    )}
+                    <div className="p-6 flex flex-col flex-1">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                          {solution.domain?.name || solution.domainName || 'General'}
+                        </span>
+                        {solution.isFeatured && (
+                          <span className="text-xs font-semibold text-amber-500 uppercase">Featured</span>
                         )}
                       </div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
+                        {solution.title}
+                      </h3>
+                      {solution.subtitle && (
+                        <p className="text-sm text-indigo-500 dark:text-indigo-300 font-medium mb-3">
+                          {solution.subtitle}
+                        </p>
+                      )}
+                      {solution.description && (
+                        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
+                          {solution.description}
+                        </p>
+                      )}
+
+                      {solution.features && solution.features.length > 0 && (
+                        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300 mb-4">
+                          {solution.features.slice(0, 3).map((feature, idx) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <span className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {solution.tags && solution.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {solution.tags.map((tag) => (
+                            <span
+                              key={`${solution.id}-${tag}`}
+                              className="text-xs px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {solution.actionUrl && (
+                        <button
+                          onClick={() => window.open(solution.actionUrl, '_blank', 'noopener,noreferrer')}
+                          className="mt-auto inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+                        >
+                          {solution.actionText || 'Explore Solution'}
+                        </button>
+                      )}
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             )}
           </div>

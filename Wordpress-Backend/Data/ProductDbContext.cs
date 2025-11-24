@@ -20,6 +20,8 @@ namespace ProductAPI.Data
         public DbSet<PremiumRepositoryRequest> PremiumRepositoryRequests { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Feedback> Feedbacks { get; set; }
+        public DbSet<FooterSettings> FooterSettings { get; set; }
+        public DbSet<Solution> Solutions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -154,6 +156,38 @@ namespace ProductAPI.Data
                 entity.Property(f => f.ProductServiceInterest).IsRequired().HasMaxLength(100);
                 entity.Property(f => f.HowDidYouHearAboutUs).IsRequired().HasMaxLength(100);
                 entity.Property(f => f.SubmittedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            // Configure Solutions
+            modelBuilder.Entity<Solution>(entity =>
+            {
+                entity.HasKey(s => s.Id);
+                entity.Property(s => s.Title).IsRequired().HasMaxLength(200);
+                entity.Property(s => s.Subtitle).HasMaxLength(300);
+                entity.Property(s => s.Icon).HasMaxLength(200);
+                entity.Property(s => s.ImageUrl).HasMaxLength(500);
+                entity.Property(s => s.ActionText).HasMaxLength(100);
+                entity.Property(s => s.ActionUrl).HasMaxLength(500);
+                entity.Property(s => s.Tags).HasColumnType("TEXT");
+                entity.Property(s => s.Features).HasColumnType("TEXT");
+                entity.Property(s => s.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(s => s.Domain)
+                    .WithMany()
+                    .HasForeignKey(s => s.DomainId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(s => s.CreatedById)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure FooterSettings
+            modelBuilder.Entity<FooterSettings>(entity =>
+            {
+                entity.HasKey(f => f.Id);
+                entity.Property(f => f.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // Configure Identity table names

@@ -34,6 +34,8 @@ import AdminRepositoriesPage from './pages/admin/AdminRepositoriesPage';
 import AdminPremiumRequestsPage from './pages/admin/AdminPremiumRequestsPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import AdminFeedbacksPage from './pages/admin/AdminFeedbacksPage';
+import AdminFooterSettingsPage from './pages/admin/AdminFooterSettingsPage';
+import AdminSolutionsPage from './pages/admin/AdminSolutionsPage';
 
 // Dashboard Components
 import UserDashboard from './pages/dashboard/UserDashboard';
@@ -193,6 +195,8 @@ function App() {
             <Route path="premium-requests" element={<AdminPremiumRequestsPage />} />
             <Route path="reviews" element={<AdminReviewsPage />} />
             <Route path="feedbacks" element={<AdminFeedbacksPage />} />
+            <Route path="solutions" element={<AdminSolutionsPage />} />
+            <Route path="footer-settings" element={<AdminFooterSettingsPage />} />
             <Route path="content" element={<AdminContentPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
           </Route>

@@ -28,6 +28,11 @@ function AdminSidebar() {
       icon: '🏷️'
     },
     {
+      name: 'Solutions',
+      path: '/admin/solutions',
+      icon: '💡'
+    },
+    {
       name: 'Publications',
       path: '/admin/publications',
       icon: '📚'
@@ -51,6 +56,11 @@ function AdminSidebar() {
       name: 'Feedbacks',
       path: '/admin/feedbacks',
       icon: '📧'
+    },
+    {
+      name: 'Footer Settings',
+      path: '/admin/footer-settings',
+      icon: '🔗'
     },
     {
       name: 'Content',

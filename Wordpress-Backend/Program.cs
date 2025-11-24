@@ -296,6 +296,72 @@ using (var scope = app.Services.CreateScope())
                 Console.WriteLine("[Database Init] Created Feedbacks table");
             }
             
+            // Create FooterSettings table if it doesn't exist
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='FooterSettings'";
+            var footerSettingsTableExists = await command.ExecuteScalarAsync();
+            if (footerSettingsTableExists == null)
+            {
+                command.CommandText = @"
+                    CREATE TABLE FooterSettings (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        CompanyName TEXT,
+                        CompanyLogoUrl TEXT,
+                        Address TEXT,
+                        Phone TEXT,
+                        Email TEXT,
+                        MapLocationUrl TEXT,
+                        LinkedInUrl TEXT,
+                        LinkedInVisible INTEGER NOT NULL DEFAULT 1,
+                        FacebookUrl TEXT,
+                        FacebookVisible INTEGER NOT NULL DEFAULT 1,
+                        TwitterUrl TEXT,
+                        TwitterVisible INTEGER NOT NULL DEFAULT 1,
+                        TikTokUrl TEXT,
+                        TikTokVisible INTEGER NOT NULL DEFAULT 1,
+                        YouTubeUrl TEXT,
+                        YouTubeVisible INTEGER NOT NULL DEFAULT 1,
+                        WhatsAppUrl TEXT,
+                        WhatsAppVisible INTEGER NOT NULL DEFAULT 1,
+                        FooterLinksJson TEXT,
+                        CopyrightText TEXT,
+                        UpdatedAt TEXT NOT NULL,
+                        UpdatedBy TEXT
+                    )";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Created FooterSettings table");
+                Console.WriteLine("[Database Init] Created FooterSettings table");
+            }
+
+            // Create Solutions table if it doesn't exist
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Solutions'";
+            var solutionsTableExists = await command.ExecuteScalarAsync();
+            if (solutionsTableExists == null)
+            {
+                command.CommandText = @"
+                    CREATE TABLE Solutions (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Title TEXT NOT NULL,
+                        Subtitle TEXT,
+                        Description TEXT,
+                        Icon TEXT,
+                        ImageUrl TEXT,
+                        ActionText TEXT,
+                        ActionUrl TEXT,
+                        IsFeatured INTEGER NOT NULL DEFAULT 0,
+                        Tags TEXT,
+                        Features TEXT,
+                        DomainId INTEGER NOT NULL,
+                        CreatedAt TEXT NOT NULL,
+                        UpdatedAt TEXT,
+                        CreatedById TEXT,
+                        FOREIGN KEY (DomainId) REFERENCES Domains(Id) ON DELETE RESTRICT,
+                        FOREIGN KEY (CreatedById) REFERENCES AspNetUsers(Id) ON DELETE SET NULL
+                    )";
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("Created Solutions table");
+                Console.WriteLine("[Database Init] Created Solutions table");
+            }
+            
             await connection.CloseAsync();
         }
         catch (Exception columnEx)

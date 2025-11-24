@@ -1,60 +1,352 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/axiosConfig';
+import { FaLinkedin, FaFacebook, FaTwitter, FaYoutube, FaWhatsapp } from 'react-icons/fa';
+import { FaTiktok } from 'react-icons/fa6';
 
-function Footer() {
+const Footer = () => {
+  const [footerSettings, setFooterSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [footerLinks, setFooterLinks] = useState([]);
+
+  const fileBaseUrl = useMemo(() => {
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5119';
+    return apiUrl.endsWith('/api') ? apiUrl.replace(/\/api$/, '') : apiUrl;
+  }, []);
+
+  useEffect(() => {
+    fetchFooterSettings();
+    
+    // Refresh footer settings every 30 seconds to catch updates
+    const interval = setInterval(() => {
+      fetchFooterSettings();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchFooterSettings = async () => {
+    try {
+      const response = await api.get('/FooterSettings');
+      const data = response.data;
+      
+      // Ensure logo URL is properly formatted
+      if (data.companyLogoUrl && !data.companyLogoUrl.startsWith('http')) {
+        const normalizedPath = data.companyLogoUrl.startsWith('/')
+          ? data.companyLogoUrl
+          : `/${data.companyLogoUrl}`;
+        data.companyLogoUrl = `${fileBaseUrl}${normalizedPath}`;
+      }
+      
+      // Ensure company name is set
+      if (!data.companyName) {
+        data.companyName = 'IT Solution Portfolio';
+      }
+      
+      setFooterSettings(data);
+      
+      // Parse footer links JSON
+      if (data.footerLinksJson) {
+        try {
+          const links = JSON.parse(data.footerLinksJson);
+          setFooterLinks(links);
+        } catch (e) {
+          console.error('Error parsing footer links:', e);
+          setFooterLinks([]);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching footer settings:', err);
+      // Use default settings on error
+      setFooterSettings({
+        companyName: 'IT Solution Portfolio',
+        companyLogoUrl: '',
+        address: '',
+        phone: '',
+        email: '',
+        mapLocationUrl: '',
+        linkedInUrl: '',
+        linkedInVisible: true,
+        facebookUrl: '',
+        facebookVisible: true,
+        twitterUrl: '',
+        twitterVisible: true,
+        tiktokUrl: '',
+        tiktokVisible: true,
+        youtubeUrl: 'https://youtube.com/@it-solution-portfolio?si=sLwI2vTGzgO54Fut',
+        youtubeVisible: true,
+        whatsAppUrl: '',
+        whatsAppVisible: true,
+        copyrightText: '© 2025 IT Solution Portfolio. All Rights Reserved.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || !footerSettings) {
+    return (
+      <footer className="bg-blue-900 text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </footer>
+    );
+  }
+
   return (
-    <footer className="bg-gray-900 dark:bg-gray-950 text-white py-8">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Portfolio</h3>
-            <p className="text-gray-400">
-              Providing innovative solutions across multiple domains with cutting-edge technology.
-            </p>
+    <footer className="bg-blue-900 text-white">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-8">
+          {/* Company Logo and Why NETSOL Column */}
+          <div className="lg:col-span-2">
+            <div className="mb-4">
+              <Link to="/" className="flex items-center mb-4">
+                {footerSettings.companyLogoUrl ? (
+                  <img 
+                    src={footerSettings.companyLogoUrl}
+                    alt={footerSettings.companyName || 'Company Logo'}
+                    className="h-12 object-contain mr-3"
+                    onError={(e) => {
+                      console.error('Error loading logo:', footerSettings.companyLogoUrl);
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                {footerSettings.companyName && (
+                  <div className="text-3xl font-bold">
+                    <span className="text-white">{footerSettings.companyName}</span>
+                  </div>
+                )}
+                {!footerSettings.companyName && !footerSettings.companyLogoUrl && (
+                  <div className="text-3xl font-bold">
+                    <span className="text-white">N</span>
+                    <span className="text-blue-300">ETSOL</span>
+                  </div>
+                )}
+              </Link>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-3">Why NETSOL</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link to="/about" className="hover:text-blue-300 transition-colors">Why NETSOL</Link></li>
+                <li><Link to="/about" className="hover:text-blue-300 transition-colors">Board Of Directors</Link></li>
+                <li><Link to="/about" className="hover:text-blue-300 transition-colors">Management Team</Link></li>
+                <li><Link to="/contact" className="hover:text-blue-300 transition-colors">Careers</Link></li>
+              </ul>
+            </div>
           </div>
+
+          {/* Investors Column */}
           <div>
-            <h3 className="text-xl font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
-              <li><Link to="/" className="text-gray-400 hover:text-white transition duration-300">Home</Link></li>
-              <li><Link to="/about" className="text-gray-400 hover:text-white transition duration-300">About</Link></li>
-              <li><Link to="/products" className="text-gray-400 hover:text-white transition duration-300">Products</Link></li>
+            <h3 className="font-semibold mb-3">Investors</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/investors" className="hover:text-blue-300 transition-colors">Investors</Link></li>
+              <li><Link to="/investors" className="hover:text-blue-300 transition-colors">Company Information</Link></li>
+              <li><Link to="/investors" className="hover:text-blue-300 transition-colors">News</Link></li>
+              <li><Link to="/investors" className="hover:text-blue-300 transition-colors">Stock Data</Link></li>
+              <li><Link to="/investors" className="hover:text-blue-300 transition-colors">SEC Filings</Link></li>
             </ul>
           </div>
+
+          {/* Products Column */}
           <div>
-            <h3 className="text-xl font-semibold mb-4">Contact Us</h3>
-            <address className="text-gray-400 not-italic">
-              <p>Email: info@portfolio.com</p>
-              <p>Phone: +1 (123) 456-7890</p>
-              <p>Address: 123 Tech Street, City, Country</p>
-            </address>
+            <h3 className="font-semibold mb-3">Products</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Transcend Platform</Link></li>
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Digital Retail</Link></li>
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Intermediary Portals</Link></li>
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Originations</Link></li>
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Servicing</Link></li>
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Wholesale Finance</Link></li>
+              <li><Link to="/products" className="hover:text-blue-300 transition-colors">Mobility Solutions</Link></li>
+            </ul>
+          </div>
+
+          {/* Consultancy Column */}
+          <div>
+            <h3 className="font-semibold mb-3">Consultancy</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">Information Security</Link></li>
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">Digital Solutions</Link></li>
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">AI, ML & Data Analytics</Link></li>
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">Generative AI</Link></li>
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">Emerging Technologies</Link></li>
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">Cloud Services</Link></li>
+              <li><Link to="/consultancy" className="hover:text-blue-300 transition-colors">Data Engineering</Link></li>
+            </ul>
+          </div>
+
+          {/* Insights Column */}
+          <div>
+            <h3 className="font-semibold mb-3">Insights</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/insights" className="hover:text-blue-300 transition-colors">Case Studies</Link></li>
+              <li><Link to="/insights" className="hover:text-blue-300 transition-colors">Industries</Link></li>
+              <li><Link to="/insights" className="hover:text-blue-300 transition-colors">Guides</Link></li>
+              <li><Link to="/insights" className="hover:text-blue-300 transition-colors">Blog</Link></li>
+              <li><Link to="/insights" className="hover:text-blue-300 transition-colors">Events</Link></li>
+            </ul>
+          </div>
+
+          {/* Marketplace Column */}
+          <div>
+            <h3 className="font-semibold mb-3">Marketplace</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/marketplace" className="hover:text-blue-300 transition-colors">Calculation Engine</Link></li>
+              <li><Link to="/marketplace" className="hover:text-blue-300 transition-colors">Document Generation</Link></li>
+              <li><Link to="/marketplace" className="hover:text-blue-300 transition-colors">API Library</Link></li>
+              <li><Link to="/marketplace" className="hover:text-blue-300 transition-colors">Loan Origination System</Link></li>
+              <li><Link to="/marketplace" className="hover:text-blue-300 transition-colors">Customer Care Portal</Link></li>
+              <li><Link to="/marketplace" className="hover:text-blue-300 transition-colors">Tax Calculation Engine</Link></li>
+            </ul>
+          </div>
+
+          {/* Solutions Column */}
+          <div>
+            <h3 className="font-semibold mb-3">Solutions</h3>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/solutions" className="hover:text-blue-300 transition-colors">Asset Finance</Link></li>
+              <li><Link to="/solutions" className="hover:text-blue-300 transition-colors">Automotive Finance</Link></li>
+              <li><Link to="/solutions" className="hover:text-blue-300 transition-colors">Equipment Finance</Link></li>
+            </ul>
           </div>
         </div>
-        <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-gray-400">© {new Date().getFullYear()} Portfolio. All rights reserved.</p>
-          <div className="flex space-x-4 mt-4 md:mt-0">
-            <a href="#" className="text-gray-400 hover:text-white transition duration-300">
-              <span className="sr-only">Facebook</span>
-              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+
+        {/* Contact Us Section */}
+        <div className="mt-12 pt-8 border-t border-blue-800">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-semibold mb-4 text-lg">Contact Us</h3>
+              <div className="mb-4">
+                <h4 className="font-medium mb-3 text-base">Corporate Headquarters</h4>
+                {footerSettings.address ? (
+                  <div className="mb-2">
+                    <p className="text-sm text-blue-200 leading-relaxed">{footerSettings.address}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-blue-200 mb-2">16000 Ventura Blvd, Suite 770 Encino, CA 91436, USA</p>
+                )}
+                {footerSettings.phone ? (
+                  <p className="text-sm text-blue-200 mb-2">{footerSettings.phone}</p>
+                ) : (
+                  <p className="text-sm text-blue-200 mb-2">+1 818 222 9195</p>
+                )}
+                {footerSettings.email && (
+                  <p className="text-sm text-blue-200 mb-2">{footerSettings.email}</p>
+                )}
+                {footerSettings.mapLocationUrl && (
+                  <div className="mt-3">
+                    <a
+                      href={footerSettings.mapLocationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-300 hover:text-blue-100 underline inline-flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white transition duration-300">
-              <span className="sr-only">Twitter</span>
-              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-              </svg>
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white transition duration-300">
-              <span className="sr-only">LinkedIn</span>
-              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path fillRule="evenodd" d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" clipRule="evenodd" />
-              </svg>
-            </a>
+                      View on Map
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium mb-4">Connect With Us</h4>
+              <div className="flex gap-4">
+                {footerSettings.linkedInVisible && footerSettings.linkedInUrl && (
+                  <a
+                    href={footerSettings.linkedInUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-blue-300 transition-colors"
+                    title="LinkedIn"
+                  >
+                    <FaLinkedin className="w-6 h-6" />
+                  </a>
+                )}
+                {footerSettings.facebookVisible && footerSettings.facebookUrl && (
+                  <a
+                    href={footerSettings.facebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-blue-300 transition-colors"
+                    title="Facebook"
+                  >
+                    <FaFacebook className="w-6 h-6" />
+                  </a>
+                )}
+                {footerSettings.twitterVisible && footerSettings.twitterUrl && (
+                  <a
+                    href={footerSettings.twitterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-blue-300 transition-colors"
+                    title="Twitter/X"
+                  >
+                    <FaTwitter className="w-6 h-6" />
+                  </a>
+                )}
+                {footerSettings.tiktokVisible && footerSettings.tiktokUrl && (
+                  <a
+                    href={footerSettings.tiktokUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-blue-300 transition-colors"
+                    title="TikTok"
+                  >
+                    <FaTiktok className="w-6 h-6" />
+                  </a>
+                )}
+                {footerSettings.youtubeVisible && footerSettings.youtubeUrl && (
+                  <a
+                    href={footerSettings.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-blue-300 transition-colors"
+                    title="YouTube"
+                  >
+                    <FaYoutube className="w-6 h-6" />
+                  </a>
+                )}
+                {footerSettings.whatsAppVisible && footerSettings.whatsAppUrl && (
+                  <a
+                    href={footerSettings.whatsAppUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-blue-300 transition-colors"
+                    title="WhatsApp"
+                  >
+                    <FaWhatsapp className="w-6 h-6" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="mt-8 pt-6 border-t border-blue-800">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
+            <p className="text-blue-200">
+              {footerSettings.copyrightText || '© 2025 IT Solution Portfolio. All Rights Reserved.'}
+            </p>
+            <div className="flex flex-wrap gap-4 text-blue-200">
+              <Link to="/terms" className="hover:text-white transition-colors">Terms of Use</Link>
+              <span>|</span>
+              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <span>|</span>
+              <Link to="/human-rights" className="hover:text-white transition-colors">Human Rights Policy</Link>
+              <span>|</span>
+              <Link to="/modern-slavery" className="hover:text-white transition-colors">Modern Slavery Act</Link>
+            </div>
           </div>
         </div>
       </div>
     </footer>
   );
-}
+};
 
 export default Footer;
