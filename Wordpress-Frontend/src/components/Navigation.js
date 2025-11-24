@@ -9,6 +9,7 @@ import GlobalSearch from './GlobalSearch';
 const Navigation = () => {
   const { user, isAdmin, isUser, isGuest, logout } = useAuth();
   const navigate = useNavigate();
+  const logoSrc = `${process.env.PUBLIC_URL || ''}/assets/logo.jpeg`;
 
   const handleLogout = () => {
     logout();
@@ -21,8 +22,14 @@ const Navigation = () => {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link to="/" className="text-xl font-bold text-indigo-600">
-                Your Logo
+              <Link to="/" className="flex items-center space-x-2">
+                <img
+                  src={logoSrc}
+                  alt="IT Solution Portfolio"
+                  className="h-20 w-auto object-contain"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+               
               </Link>
             </div>
             

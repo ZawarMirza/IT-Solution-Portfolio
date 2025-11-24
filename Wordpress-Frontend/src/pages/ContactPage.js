@@ -107,10 +107,26 @@ const ContactPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">Contact Sales</h1>
-        
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Hero / Banner */}
+      <div className="relative h-80 bg-gradient-to-r from-teal-700 via-indigo-700 to-purple-700 overflow-hidden">
+        <div className="absolute inset-0 opacity-30">
+          <img
+            src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1500&q=80"
+            alt="Contact banner"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent"></div>
+        <div className="relative max-w-6xl mx-auto px-4 py-24 sm:py-32 lg:px-8 text-white">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Contact Sales</h1>
+          <p className="mt-4 text-lg text-indigo-100 max-w-2xl">
+            Have a question, project, or partnership opportunity? Fill out the form and our team will reach out shortly.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Left Column */}

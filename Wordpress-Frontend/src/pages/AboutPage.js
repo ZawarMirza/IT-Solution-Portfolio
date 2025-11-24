@@ -92,10 +92,18 @@ function AboutPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Hero Section */}
-      <div className="bg-blue-900 dark:bg-blue-950 text-white py-20 transition-colors duration-300">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">About Us</h1>
-          <p className="text-xl text-blue-200 max-w-3xl mx-auto">
+      <div className="relative h-150 bg-blue-900 dark:bg-blue-950 text-white overflow-hidden transition-colors duration-300">
+        <div className="absolute inset-0 opacity-40">
+          <img
+            src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1600&q=80"
+            alt="About Banner"
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-blue-700/60 dark:from-blue-950/80 dark:to-blue-800/60"></div>
+        <div className="relative max-w-7xl mx-auto px-4 py-24 sm:py-32 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl font-bold sm:text-5xl mb-4">About Us</h1>
+          <p className="text-xl text-blue-100 max-w-3xl mx-auto">
             Learn about our journey, our team, and the mission that drives us forward.
           </p>
         </div>

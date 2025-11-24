@@ -257,7 +257,9 @@ const AdminProductsPage = () => {
                                     <tr key={product.id} className="hover:bg-gray-50 transition duration-200 ease-in-out">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.title || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getDomainName(product.domainId) || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.CreatedByUsername || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                          {product.createdByUsername || product.CreatedByUsername || product.createdBy || 'N/A'}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                           {product.createdAt && !isNaN(new Date(product.createdAt).getTime()) ? new Date(product.createdAt).toLocaleDateString() : "N/A"}
                                         </td>

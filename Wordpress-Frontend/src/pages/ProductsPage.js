@@ -587,7 +587,7 @@ function ProductsPage() {
   return (
     <div className="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 min-h-screen">
       {/* Banner Section */}
-      <div className="relative h-80 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 overflow-hidden">
+      <div className="relative h-120 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/50 via-purple-800/30 to-transparent"></div>
         <div className="absolute inset-0 opacity-20">
           <img 
