@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { parseBackendErrors, getErrorMessage } from '../../utils/errorHandler';
-import Navigation from '../../components/Navigation';
-import Footer from '../../components/Footer';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -46,20 +44,16 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Navigation />
-      <main className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+    <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-extrabold text-gray-900">
           Forgot your password?
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-sm text-gray-600">
           Enter your email address and we'll send you a link to reset your password.
         </p>
       </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div>
           {message ? (
             <div className="rounded-md bg-green-50 p-4 mb-6">
               <div className="flex">
@@ -160,11 +154,8 @@ const ForgotPasswordPage = () => {
                 Back to Sign in
               </Link>
             </div>
-          </div>
-          </div>
         </div>
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 };

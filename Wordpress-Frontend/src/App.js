@@ -1,10 +1,9 @@
 // src/App.js
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, ROLES } from "./context";
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
-import { Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 // Public Pages
@@ -71,64 +70,17 @@ const MainLayout = ({ children }) => (
   </div>
 );
 
-const AuthLayout = ({ children }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Determine back navigation based on current route
-  const getBackPath = () => {
-    const path = location.pathname;
-    if (path === '/login' || path === '/register') {
-      return '/'; // Go to home from login/register
-    }
-    if (path === '/forgot-password' || path === '/reset-password' || path === '/verify-email') {
-      return '/login'; // Go to login from password/verification pages
-    }
-    return -1; // Default: go back in history
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="bg-white shadow-sm">
-        {/* ✅ Removed container padding */}
-        <div className="w-full px-0">
-          <div className="flex justify-between h-16 items-center px-4 sm:px-6 lg:px-8">
-            {/* Back Button */}
-            <button
-              onClick={() => {
-                const backPath = getBackPath();
-                if (backPath === -1) {
-                  navigate(-1);
-                } else {
-                  navigate(backPath);
-                }
-              }}
-              className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-              aria-label="Go back"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span className="ml-2 text-sm font-medium">Back</span>
-            </button>
-            
-            <Link to="/" className="text-xl font-bold text-indigo-600 hover:text-indigo-800">
-              Your Logo
-            </Link>
-            
-            {/* Spacer for alignment */}
-            <div className="w-20"></div>
-          </div>
-        </div>
+const AuthLayout = ({ children }) => (
+  <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <Navigation />
+    <main className="flex-1 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-lg">
+        {children}
       </div>
-      <main className="flex-grow flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {children}
-        </div>
-      </main>
-    </div>
-  );
-};
+    </main>
+    <Footer />
+  </div>
+);
 
 const AdminLayout = () => (
   <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>

@@ -213,7 +213,7 @@ namespace Wordpress_Backend.Controllers
 
         // POST: api/Repositories
         [HttpPost]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Repository>> PostRepository(Repository repository)
         {
             // Log received data for debugging
@@ -292,7 +292,7 @@ namespace Wordpress_Backend.Controllers
 
         // PUT: api/Repositories/5
         [HttpPut("{id}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutRepository(int id, Repository repository)
         {
             if (id != repository.Id)
@@ -324,13 +324,23 @@ namespace Wordpress_Backend.Controllers
 
         // DELETE: api/Repositories/5
         [HttpDelete("{id}")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteRepository(int id)
         {
             var repository = await _context.Repositories.FindAsync(id);
             if (repository == null)
             {
                 return NotFound();
+            }
+
+            // Remove dependent premium access requests first to avoid FK constraint issues
+            var relatedRequests = await _context.PremiumRepositoryRequests
+                .Where(r => r.RepositoryId == id)
+                .ToListAsync();
+
+            if (relatedRequests.Count > 0)
+            {
+                _context.PremiumRepositoryRequests.RemoveRange(relatedRequests);
             }
 
             _context.Repositories.Remove(repository);

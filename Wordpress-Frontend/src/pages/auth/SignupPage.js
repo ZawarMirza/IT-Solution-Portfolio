@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, ROLES } from '../../context';
 import { parseBackendErrors } from '../../utils/errorHandler';
-import Navigation from '../../components/Navigation';
-import Footer from '../../components/Footer';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -179,14 +177,12 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Navigation />
-      <main className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+    <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-extrabold text-gray-900">
           Create a new account
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-sm text-gray-600">
           Or{' '}
           <Link 
             to="/login" 
@@ -197,9 +193,7 @@ const SignupPage = () => {
           </Link>
         </p>
       </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
-          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div>
           {errors.form && (
             <div className="mb-4 rounded-md bg-red-50 p-4">
               <div className="flex">
@@ -426,11 +420,8 @@ const SignupPage = () => {
                 Sign in
               </Link>
             </div>
-          </div>
-          </div>
         </div>
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 };
