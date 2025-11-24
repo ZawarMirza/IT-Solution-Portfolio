@@ -164,7 +164,6 @@ namespace ProductAPI.Data
                 entity.HasKey(s => s.Id);
                 entity.Property(s => s.Title).IsRequired().HasMaxLength(200);
                 entity.Property(s => s.Subtitle).HasMaxLength(300);
-                entity.Property(s => s.Icon).HasMaxLength(200);
                 entity.Property(s => s.ImageUrl).HasMaxLength(500);
                 entity.Property(s => s.ActionText).HasMaxLength(100);
                 entity.Property(s => s.ActionUrl).HasMaxLength(500);

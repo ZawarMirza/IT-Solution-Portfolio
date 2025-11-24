@@ -8,6 +8,9 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using Wordpress_Backend.Models;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using System.IO;
 
 namespace Wordpress_Backend.Controllers
 {
@@ -17,13 +20,16 @@ namespace Wordpress_Backend.Controllers
     {
         private readonly ProductDbContext _context;
         private readonly ILogger<SolutionsController> _logger;
+        private readonly IWebHostEnvironment _env;
 
         public SolutionsController(
             ProductDbContext context,
-            ILogger<SolutionsController> logger)
+            ILogger<SolutionsController> logger,
+            IWebHostEnvironment env)
         {
             _context = context;
             _logger = logger;
+            _env = env;
         }
 
         private static List<string> DeserializeList(string? data)
@@ -66,7 +72,6 @@ namespace Wordpress_Backend.Controllers
                 s.Title,
                 s.Subtitle,
                 s.Description,
-                s.Icon,
                 s.ImageUrl,
                 s.ActionText,
                 s.ActionUrl,
@@ -99,7 +104,6 @@ namespace Wordpress_Backend.Controllers
                 solution.Title,
                 solution.Subtitle,
                 solution.Description,
-                solution.Icon,
                 solution.ImageUrl,
                 solution.ActionText,
                 solution.ActionUrl,
@@ -135,7 +139,6 @@ namespace Wordpress_Backend.Controllers
                 Title = dto.Title,
                 Subtitle = dto.Subtitle,
                 Description = dto.Description,
-                Icon = dto.Icon,
                 ImageUrl = dto.ImageUrl,
                 ActionText = dto.ActionText,
                 ActionUrl = dto.ActionUrl,
@@ -156,7 +159,6 @@ namespace Wordpress_Backend.Controllers
                 solution.Title,
                 solution.Subtitle,
                 solution.Description,
-                solution.Icon,
                 solution.ImageUrl,
                 solution.ActionText,
                 solution.ActionUrl,
@@ -192,7 +194,6 @@ namespace Wordpress_Backend.Controllers
             solution.Title = dto.Title;
             solution.Subtitle = dto.Subtitle;
             solution.Description = dto.Description;
-            solution.Icon = dto.Icon;
             solution.ImageUrl = dto.ImageUrl;
             solution.ActionText = dto.ActionText;
             solution.ActionUrl = dto.ActionUrl;
@@ -222,6 +223,52 @@ namespace Wordpress_Backend.Controllers
 
             return Ok(new { message = "Solution deleted successfully" });
         }
+
+        [HttpPost("upload-image")]
+        [Authorize(Roles = "Admin")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadSolutionImage([FromForm] IFormFile image)
+        {
+            if (image == null || image.Length == 0)
+            {
+                return BadRequest(new { message = "Please select an image file to upload." });
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new { message = "Invalid image format. Allowed: JPG, JPEG, PNG, GIF, WEBP." });
+            }
+
+            if (image.Length > 5 * 1024 * 1024)
+            {
+                return BadRequest(new { message = "Image size must be 5MB or less." });
+            }
+
+            try
+            {
+                var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var uploadsFolder = Path.Combine(webRoot, "uploads", "solutions");
+                Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"solution_{Guid.NewGuid():N}{extension}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = System.IO.File.Create(filePath))
+                {
+                    await image.CopyToAsync(stream);
+                }
+
+                var imageUrl = $"/uploads/solutions/{fileName}";
+                return Ok(new { imageUrl, message = "Image uploaded successfully." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error uploading solution image");
+                return StatusCode(500, new { message = "An error occurred while uploading the image." });
+            }
+        }
     }
 
     public class SolutionCreateDto
@@ -237,8 +284,6 @@ namespace Wordpress_Backend.Controllers
 
         [Required]
         public int DomainId { get; set; }
-
-        public string? Icon { get; set; }
 
         public string? ImageUrl { get; set; }
 

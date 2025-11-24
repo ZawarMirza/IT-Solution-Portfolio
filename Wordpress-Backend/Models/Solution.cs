@@ -16,9 +16,6 @@ namespace Wordpress_Backend.Models
 
         public string? Description { get; set; }
 
-        [MaxLength(200)]
-        public string? Icon { get; set; }
-
         [MaxLength(500)]
         public string? ImageUrl { get; set; }
 

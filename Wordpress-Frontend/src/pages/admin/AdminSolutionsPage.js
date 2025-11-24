@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../utils/axiosConfig';
 import toast from 'react-hot-toast';
 import { FaPlus, FaTimes, FaTrash, FaEdit } from 'react-icons/fa';
@@ -8,7 +8,6 @@ const emptySolution = {
   subtitle: '',
   description: '',
   domainId: '',
-  icon: '',
   imageUrl: '',
   actionText: '',
   actionUrl: '',
@@ -25,6 +24,22 @@ const AdminSolutionsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(emptySolution);
   const [editingSolutionId, setEditingSolutionId] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const fileBaseUrl = useMemo(() => {
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5119';
+    return apiUrl.endsWith('/api') ? apiUrl.replace(/\/api$/, '') : apiUrl;
+  }, []);
+
+  const getPublicUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${fileBaseUrl}${normalized}`;
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -58,6 +73,7 @@ const AdminSolutionsPage = () => {
   const openCreateForm = () => {
     setFormData(emptySolution);
     setEditingSolutionId(null);
+    setImagePreview('');
     setShowForm(true);
   };
 
@@ -68,7 +84,6 @@ const AdminSolutionsPage = () => {
       subtitle: solution.subtitle || '',
       description: solution.description || '',
       domainId: solution.domain?.id || solution.domainId || '',
-      icon: solution.icon || '',
       imageUrl: solution.imageUrl || '',
       actionText: solution.actionText || '',
       actionUrl: solution.actionUrl || '',
@@ -76,6 +91,7 @@ const AdminSolutionsPage = () => {
       tags: (solution.tags || []).join(', '),
       features: (solution.features || []).join('\n')
     });
+    setImagePreview(getPublicUrl(solution.imageUrl || ''));
     setShowForm(true);
   };
 
@@ -83,6 +99,12 @@ const AdminSolutionsPage = () => {
     setShowForm(false);
     setFormData(emptySolution);
     setEditingSolutionId(null);
+    setImagePreview('');
+    setUploadingImage(false);
+    setIsDragActive(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const transformPayload = () => {
@@ -99,7 +121,6 @@ const AdminSolutionsPage = () => {
       subtitle: formData.subtitle?.trim() || null,
       description: formData.description?.trim() || null,
       domainId: Number(formData.domainId),
-      icon: formData.icon?.trim() || null,
       imageUrl: formData.imageUrl?.trim() || null,
       actionText: formData.actionText?.trim() || null,
       actionUrl: formData.actionUrl?.trim() || null,
@@ -107,6 +128,83 @@ const AdminSolutionsPage = () => {
       tags,
       features
     };
+  };
+
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be 5MB or smaller.');
+      return;
+    }
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('image', file);
+    setUploadingImage(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.post('/Solutions/upload-image', formDataUpload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      const uploadedPath = response.data.imageUrl;
+      setFormData((prev) => ({ ...prev, imageUrl: uploadedPath }));
+      setImagePreview(getPublicUrl(uploadedPath));
+      toast.success('Image uploaded successfully.');
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      if (err.response?.status === 401) {
+        toast.error('Your session expired. Please log in again.');
+      } else {
+        const errorMessage = err.response?.data?.message || 'Failed to upload image.';
+        toast.error(errorMessage);
+      }
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  };
+
+  const triggerFileDialog = () => {
+    fileInputRef.current?.click();
+  };
+
+  const clearImage = () => {
+    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+    setImagePreview('');
   };
 
   const handleSubmit = async (e) => {
@@ -130,8 +228,12 @@ const AdminSolutionsPage = () => {
       fetchInitialData();
     } catch (err) {
       console.error('Error saving solution:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to save solution.';
-      toast.error(errorMessage);
+      if (err.response?.status === 401) {
+        toast.error('Your session expired. Please log in again.');
+      } else {
+        const errorMessage = err.response?.data?.message || 'Failed to save solution.';
+        toast.error(errorMessage);
+      }
     } finally {
       setSaving(false);
     }
@@ -147,8 +249,12 @@ const AdminSolutionsPage = () => {
       fetchInitialData();
     } catch (err) {
       console.error('Error deleting solution:', err);
-      const errorMessage = err.response?.data?.message || 'Failed to delete solution.';
-      toast.error(errorMessage);
+      if (err.response?.status === 401) {
+        toast.error('Your session expired. Please log in again.');
+      } else {
+        const errorMessage = err.response?.data?.message || 'Failed to delete solution.';
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -291,27 +397,52 @@ const AdminSolutionsPage = () => {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Icon (optional)</label>
-                  <input
-                    type="text"
-                    name="icon"
-                    value={formData.icon}
-                    onChange={handleInputChange}
-                    placeholder="e.g., fa-solid fa-cloud"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Image URL</label>
-                  <input
-                    type="text"
-                    name="imageUrl"
-                    value={formData.imageUrl}
-                    onChange={handleInputChange}
-                    placeholder="https://example.com/image.png or /uploads/img.png"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Solution Image</label>
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-4 transition-colors ${
+                      isDragActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-300 dark:border-gray-700'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragEnter={() => setIsDragActive(true)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileInputChange}
+                    />
+                    {imagePreview ? (
+                      <div className="relative">
+                        <img src={imagePreview} alt="Solution" className="w-full h-56 object-cover rounded-lg" />
+                        <button
+                          type="button"
+                          onClick={clearImage}
+                          className="absolute top-3 right-3 px-3 py-1 bg-black/70 text-white text-xs rounded-full"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 dark:text-gray-400 space-y-2">
+                        <p>Drag & drop an image here, or</p>
+                        <button
+                          type="button"
+                          onClick={triggerFileDialog}
+                          className="px-3 py-1 rounded-md border border-indigo-500 text-indigo-600 dark:text-indigo-300"
+                        >
+                          Browse Files
+                        </button>
+                        <p className="text-xs text-gray-400">PNG, JPG, GIF up to 5MB</p>
+                      </div>
+                    )}
+                    {uploadingImage && (
+                      <p className="text-sm text-indigo-600 dark:text-indigo-300 mt-2">Uploading image...</p>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CTA Text</label>

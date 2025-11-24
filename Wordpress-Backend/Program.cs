@@ -343,7 +343,6 @@ using (var scope = app.Services.CreateScope())
                         Title TEXT NOT NULL,
                         Subtitle TEXT,
                         Description TEXT,
-                        Icon TEXT,
                         ImageUrl TEXT,
                         ActionText TEXT,
                         ActionUrl TEXT,
