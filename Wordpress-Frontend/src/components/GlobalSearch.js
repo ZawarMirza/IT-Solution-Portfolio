@@ -82,9 +82,9 @@ const GlobalSearch = () => {
   );
 
   return (
-    <form onSubmit={handleSearch} className="flex items-center gap-2">
+    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
       {/* Category Input */}
-      <div className="relative" ref={categoryRef}>
+      <div className="relative flex-1 sm:flex-none" ref={categoryRef}>
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
@@ -96,7 +96,7 @@ const GlobalSearch = () => {
             }}
             onFocus={() => setShowCategoryDropdown(true)}
             placeholder="Products"
-            className="w-40 md:w-48 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700"
+            className="w-full sm:w-32 md:w-40 lg:w-48 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700 text-sm"
           />
         </div>
         {showCategoryDropdown && filteredCategories.length > 0 && (
@@ -106,7 +106,7 @@ const GlobalSearch = () => {
                 key={cat}
                 type="button"
                 onClick={() => handleCategorySelect(cat)}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
               >
                 {cat}
               </button>
@@ -116,7 +116,7 @@ const GlobalSearch = () => {
       </div>
 
       {/* Domain Input */}
-      <div className="relative" ref={domainRef}>
+      <div className="relative flex-1 sm:flex-none" ref={domainRef}>
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
@@ -128,7 +128,7 @@ const GlobalSearch = () => {
             }}
             onFocus={() => setShowDomainDropdown(true)}
             placeholder="Data Science"
-            className="w-40 md:w-48 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700"
+            className="w-full sm:w-32 md:w-40 lg:w-48 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700 text-sm"
           />
         </div>
         {showDomainDropdown && filteredDomains.length > 0 && (
@@ -138,7 +138,7 @@ const GlobalSearch = () => {
                 key={dom}
                 type="button"
                 onClick={() => handleDomainSelect(dom)}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 text-sm"
               >
                 {dom}
               </button>
@@ -150,7 +150,7 @@ const GlobalSearch = () => {
       {/* Search Button */}
       <button
         type="submit"
-        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-700 transition-colors font-medium"
+        className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-700 transition-colors font-medium text-sm whitespace-nowrap"
       >
         Search
       </button>

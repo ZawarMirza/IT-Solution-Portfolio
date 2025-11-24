@@ -681,6 +681,26 @@ function ProductsPage() {
         {/* Products Tab */}
         {activeTab === 'products' && !loading && (
           <div>
+            {/* YouTube Video Embed */}
+            <div className="mb-8">
+              <div className="w-full max-w-xl">
+                <div className="relative" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+                  <iframe
+                    width="560"
+                    height="315"
+                    src="https://www.youtube.com/embed/lAmArkTPKGk?si=6LAVDZ0jJ0c6zUai"
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                    className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+                    style={{ border: 'none' }}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Domain Filter */}
             <div className="mb-6">
               <div className="flex items-center mb-4">
@@ -750,6 +770,26 @@ function ProductsPage() {
         {/* Solutions Tab */}
         {activeTab === 'solutions' && !loading && (
           <div>
+            {/* YouTube Video Embed */}
+            <div className="mb-8">
+              <div className="w-full max-w-xl">
+                <div className="relative" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+                  <iframe
+                    width="560"
+                    height="315"
+                    src="https://www.youtube.com/embed/7wsUJAawK2U?si=6JrMgTJuaZC5T9nM"
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                    className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+                    style={{ border: 'none' }}
+                  />
+              </div>
+            </div>
+            </div>
+
             {/* Domain Filter */}
             <div className="mb-6">
               <div className="flex items-center mb-4">
@@ -777,8 +817,8 @@ function ProductsPage() {
             {filteredSolutions.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 dark:text-gray-400">No solutions found.</p>
-              </div>
-            ) : (
+            </div>
+          ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSolutions.map((solution) => (
                   <div
@@ -860,6 +900,26 @@ function ProductsPage() {
         {/* Repositories Tab */}
         {activeTab === 'repositories' && !loading && (
           <div>
+            {/* YouTube Video Embed */}
+            <div className="mb-8">
+              <div className="w-full max-w-xl">
+                <div className="relative" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+                  <iframe
+                    width="560"
+                    height="315"
+                    src="https://www.youtube.com/embed/0-MRcLa4KYE?si=pxBXS2OxVjbfan04"
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                    className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+                    style={{ border: 'none' }}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Info message for guests */}
             {!isAuthenticated() && (
               <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 p-4 rounded">
@@ -1130,6 +1190,26 @@ function ProductsPage() {
         {/* Publications Tab */}
         {activeTab === 'publications' && !loading && (
           <div>
+            {/* YouTube Video Embed */}
+                <div className="mb-8">
+              <div className="w-full max-w-xl">
+                <div className="relative" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+                  <iframe
+                    width="560"
+                    height="315"
+                    src="https://www.youtube.com/embed/ayTQ-VjvGNU?si=64B_wgkz_aW0G0RS"
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allowFullScreen
+                    className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+                    style={{ border: 'none' }}
+                  />
+                </div>
+              </div>
+                </div>
+                
             {/* Search and Filter Section */}
             <div className="mb-6 space-y-4">
               {/* Search Bar */}
@@ -1263,11 +1343,11 @@ function ProductsPage() {
                         >
                           <FaDownload />
                           {isAuthenticated() ? 'Download' : 'Login to Download'}
-          </button>
+                          </button>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           {pub.downloads || 0} downloads
                         </span>
-        </div>
+                        </div>
 
                       {/* Published Date */}
                       {pub.publishedDate && (
@@ -1275,12 +1355,12 @@ function ProductsPage() {
                           Published: {new Date(pub.publishedDate).toLocaleDateString()}
                         </p>
           )}
-      </div>
-      </div>
-                ))}
+                      </div>
+                    </div>
+                  ))}
               </div>
-            )}
-          </div>
+          )}
+        </div>
         )}
       </div>
 
@@ -1536,15 +1616,15 @@ function ProductsPage() {
                         ) : (
                           <FaRegStar className="text-gray-300 dark:text-gray-600" />
                         )}
-                      </button>
+          </button>
                     ))}
-                  </div>
+        </div>
                   {reviewRating > 0 && (
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                       {reviewRating} out of 5 stars
                     </p>
                   )}
-                </div>
+      </div>
 
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
