@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../context';
 import { Helmet } from 'react-helmet';
 import { FiDownload, FiSearch, FiFilter, FiCalendar, FiUser, FiTag, FiPlus } from 'react-icons/fi';
 import AddPublicationModal from '../../components/publications/AddPublicationModal';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5119/api';
+const FILE_BASE_URL = API_BASE_URL.endsWith('/api') ? API_BASE_URL.replace(/\/api$/, '') : API_BASE_URL;
+
 const UserPublicationsPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const [publications, setPublications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,11 +28,31 @@ const UserPublicationsPage = () => {
     setIsAddModalOpen(true);
   };
 
+  const buildFileUrl = useCallback((url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const normalized = url.startsWith('/') ? url : `/${url}`;
+    return `${FILE_BASE_URL}${normalized}`;
+  }, []);
+
+  const parseJsonArray = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    try {
+      return JSON.parse(value);
+    } catch (err) {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  };
+
   // Fetch domains from API
   useEffect(() => {
     const fetchDomains = async () => {
       try {
-        const response = await fetch('http://localhost:5119/api/domains');
+        const response = await fetch(`${API_BASE_URL}/domains`);
         if (!response.ok) {
           throw new Error('Failed to fetch domains');
         }
@@ -49,7 +72,7 @@ const UserPublicationsPage = () => {
   useEffect(() => {
     const fetchPublications = async () => {
       try {
-        const response = await fetch('http://localhost:5119/api/Publications');
+        const response = await fetch(`${API_BASE_URL}/Publications`);
         if (!response.ok) {
           throw new Error('Failed to fetch publications');
         }
@@ -59,16 +82,16 @@ const UserPublicationsPage = () => {
         const transformedPublications = data.map(pub => ({
           id: pub.id,
           title: pub.title,
-          authors: JSON.parse(pub.authors || '[]'),
+          authors: parseJsonArray(pub.authors),
           domain: pub.domain,
           abstract: pub.abstract,
-          thumbnail: pub.thumbnailUrl,
-          documentPreview: pub.documentPreviewUrl,
-          videoPreview: pub.videoPreviewUrl,
-          downloadUrl: pub.downloadUrl,
+          thumbnail: buildFileUrl(pub.thumbnailUrl || pub.thumbnail),
+          documentPreview: buildFileUrl(pub.documentPreviewUrl),
+          videoPreview: buildFileUrl(pub.videoPreviewUrl),
+          downloadUrl: buildFileUrl(pub.downloadUrl),
           publishedDate: pub.publishedDate,
           downloads: pub.downloads || 0,
-          keywords: JSON.parse(pub.keywords || '[]'),
+          keywords: parseJsonArray(pub.keywords),
           status: pub.status
         }));
 
@@ -82,7 +105,7 @@ const UserPublicationsPage = () => {
     };
 
     fetchPublications();
-  }, []);
+  }, [buildFileUrl]);
 
   // Filter and sort publications
   const filteredPublications = useMemo(() => {
@@ -138,7 +161,7 @@ const UserPublicationsPage = () => {
         formDataToSend.append('video', formData.video);
       }
 
-      const response = await fetch('http://localhost:5119/api/Publications', {
+      const response = await fetch(`${API_BASE_URL}/Publications`, {
         method: 'POST',
         body: formDataToSend,
       });
@@ -152,8 +175,12 @@ const UserPublicationsPage = () => {
       const newPublication = await response.json();
       const transformedPublication = {
         ...newPublication,
-        authors: JSON.parse(newPublication.authors || '[]'),
-        keywords: JSON.parse(newPublication.keywords || '[]')
+        authors: parseJsonArray(newPublication.authors),
+        keywords: parseJsonArray(newPublication.keywords),
+        thumbnail: buildFileUrl(newPublication.thumbnailUrl || newPublication.thumbnail),
+        documentPreview: buildFileUrl(newPublication.documentPreviewUrl),
+        videoPreview: buildFileUrl(newPublication.videoPreviewUrl),
+        downloadUrl: buildFileUrl(newPublication.downloadUrl)
       };
       
       // Add the new publication to the list
@@ -170,26 +197,39 @@ const UserPublicationsPage = () => {
 
   // Handle download
   const handleDownload = async (publication) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated()) {
       // Redirect to login or show login modal
+      return;
+    }
+    
+    if (!publication.downloadUrl) {
+      alert('Download URL not available for this publication.');
       return;
     }
     
     try {
       // Increment download count
-      await fetch(`http://localhost:5119/api/Publications/${publication.id}/download`, {
-        method: 'PUT'
-      });
+      const authToken = token || localStorage.getItem('token');
+      if (authToken) {
+        await fetch(`${API_BASE_URL}/Publications/${publication.id}/download`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+      }
       
       // Update local state
-      setPublications(publications.map(pub => 
-        pub.id === publication.id 
-          ? { ...pub, downloads: (pub.downloads || 0) + 1 } 
-          : pub
-      ));
+      setPublications((prev) =>
+        prev.map((pub) =>
+          pub.id === publication.id
+            ? { ...pub, downloads: (pub.downloads || 0) + 1 }
+            : pub
+        )
+      );
       
       // Trigger download
-      window.open(publication.downloadUrl, '_blank');
+      window.open(publication.downloadUrl, '_blank', 'noopener,noreferrer');
       
     } catch (error) {
       console.error('Download failed:', error);
@@ -337,14 +377,14 @@ const UserPublicationsPage = () => {
                     onClick={() => handleDownload(publication)}
                     disabled={!isAuthenticated}
                     className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                      isAuthenticated 
+                      isAuthenticated() 
                         ? 'bg-blue-600 hover:bg-blue-700' 
                         : 'bg-gray-400 cursor-not-allowed'
                     } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200`}
-                    title={!isAuthenticated ? 'Please login to download' : ''}
+                    title={!isAuthenticated() ? 'Please login to download' : ''}
                   >
                     <FiDownload className="mr-2" />
-                    {isAuthenticated ? 'Download' : 'Login to Download'}
+                    {isAuthenticated() ? 'Download' : 'Login to Download'}
                   </button>
                 </div>
               </div>
