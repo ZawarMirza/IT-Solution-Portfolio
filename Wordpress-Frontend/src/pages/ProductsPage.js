@@ -263,8 +263,14 @@ function ProductsPage() {
   // Filter products by domain
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const matchesDomain = selectedDomainProduct === 'All' || product.domain?.name === selectedDomainProduct;
-      return matchesDomain;
+      if (selectedDomainProduct === 'All') return true;
+      const domainName =
+        product.domain?.name ||
+        product.domain ||
+        product.domainName ||
+        product.Domain ||
+        product.DomainName;
+      return domainName === selectedDomainProduct;
     });
   }, [products, selectedDomainProduct]);
 

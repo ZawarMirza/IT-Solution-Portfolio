@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, ROLES } from '../../context';
 import { parseBackendErrors, getErrorMessage } from '../../utils/errorHandler';
+import Navigation from '../../components/Navigation';
+import Footer from '../../components/Footer';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -62,8 +64,10 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <Navigation />
+      <main className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Sign in to your account
         </h2>
@@ -79,8 +83,8 @@ const LoginPage = () => {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {location.state?.message && (
             <div className="mb-4 rounded-md bg-green-50 p-4">
               <div className="flex">
@@ -219,8 +223,10 @@ const LoginPage = () => {
               </button>
             </div>
           </form>
+          </div>
         </div>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
 };
